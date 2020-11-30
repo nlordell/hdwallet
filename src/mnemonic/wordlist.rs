@@ -1,12 +1,13 @@
 //! Module containing the embedded BIP-0039 word lists.
 
-use std::borrow::Cow;
+use crate::mnemonic::Language;
+use std::{mem::MaybeUninit, sync::Once};
 
 /// A parsed word list.
-pub struct Wordlist<'a>(Vec<Cow<'a, str>>);
+pub struct Wordlist<'a>(Vec<&'a str>);
 
 /// The number of words in a list, as defined in BIP-0039.
-pub const WORD_COUNT: usize = 1024;
+pub const WORD_COUNT: usize = 2048;
 
 impl<'a> Wordlist<'a> {
     /// Parses a list of newline-separated words.
@@ -14,11 +15,7 @@ impl<'a> Wordlist<'a> {
         let words = words
             .trim()
             .split('\n')
-            .map(|word| {
-                // TODO(nlordell): The words here need to be normalized for its
-                // language, like converting 'ñ' to 'n' in Spanish.
-                Cow::Borrowed(word.trim())
-            })
+            .map(|word| word.trim())
             .collect::<Vec<_>>();
 
         debug_assert_eq!(words.len(), WORD_COUNT);
@@ -36,7 +33,8 @@ impl<'a> Wordlist<'a> {
     pub fn search(&self, word: impl AsRef<str>) -> Option<usize> {
         // TODO(nlordell): It is possible to be generous here and fix common
         // spelling mistakes as well as only consider the first letters of the
-        // word as long as it is unique.
+        // word as long as it is unique. Additionally, certain languages have
+        // equivalent characters like Spanish with 'ñ' and 'n'.
         self.0
             .binary_search_by_key(&word.as_ref(), |word| &word)
             .ok()
@@ -54,14 +52,40 @@ impl<'a> Wordlist<'a> {
     }
 }
 
-macro_rules! define {
-    ($(
-        $(#[$attr:meta])*
-        $vis:vis $lang:ident = $f:expr;
+macro_rules! match_language {
+    ($lang:expr; $(
+        $l:ident => $f:expr,
     )*) => {$(
-        $(#[$attr])*
-        $vis fn $lang() -> &'static Wordlist;
+        match $lang {
+            Language::$l => {
+                static mut WORDLIST: MaybeUninit<Wordlist> = MaybeUninit::uninit();
+                static INIT: Once = Once::new();
+                INIT.call_once(|| {
+                    unsafe {
+                        WORDLIST.as_mut_ptr().write(Wordlist::parse(
+                            include_str!(concat!("wordlist/", $f)),
+                        ))
+                    }
+                });
+                unsafe { &*WORDLIST.as_ptr() }
+            }
+        }
     )*};
 }
 
-define!();
+/// Retrieves the wordlist for the specified language.
+pub fn for_language(language: Language) -> &'static Wordlist<'static> {
+    match_language! { language;
+        English => "english.txt",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_wordlists() {
+        for_language(Language::English);
+    }
+}
