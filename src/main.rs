@@ -1,5 +1,7 @@
+mod account;
 mod cmd;
 mod hash;
+mod hdk;
 mod mnemonic;
 mod rand;
 
@@ -13,11 +15,13 @@ use structopt::StructOpt;
     about = "Hierarchical deterministic wallet for Ethereum"
 )]
 enum Options {
+    Address(address::Options),
     New(new::Options),
 }
 
 fn main() {
     if let Err(err) = match Options::from_args() {
+        Options::Address(options) => address::run(options),
         Options::New(options) => new::run(options),
     } {
         if cfg!(debug_assertions) {

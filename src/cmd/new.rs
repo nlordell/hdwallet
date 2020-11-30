@@ -1,7 +1,7 @@
-//! Module implementing the `new` command for generating a mnemonic for a new
+//! Module implementing the `new` subcommand for generating a mnemonic for a new
 //! hierarchical deterministic wallet.
 
-use crate::mnemonic::{Language, Seed};
+use crate::mnemonic::{Language, Mnemonic};
 use anyhow::Result;
 use structopt::StructOpt;
 
@@ -18,8 +18,7 @@ pub struct Options {
 }
 
 pub fn run(options: Options) -> Result<()> {
-    let seed = Seed::random(options.length)?;
-    println!("{}", seed.to_mnemonic(options.language));
-
+    let mnemonic = Mnemonic::random(options.language, options.length)?;
+    println!("{}", mnemonic);
     Ok(())
 }
