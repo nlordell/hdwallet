@@ -1,0 +1,62 @@
+//! Module implementing parsing for BIP-0032 HD paths used for key derivation.
+
+use anyhow::{anyhow, Context as _, Result};
+use std::str::FromStr;
+
+/// A parsed hierarchical derivation path.
+#[derive(Debug)]
+pub struct Path {
+    components: Vec<Component>,
+}
+
+impl Path {
+    /// Returns an iterator
+    pub fn components(&self) -> impl Iterator<Item = Component> + '_ {
+        self.components.iter().copied()
+    }
+}
+
+impl FromStr for Path {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        let components = s
+            .strip_prefix("m/")
+            .ok_or_else(|| anyhow!("BIP-0032 path missing main node"))?
+            .split('/')
+            .map(Component::from_str)
+            .collect::<Result<_>>()?;
+
+        Ok(Self { components })
+    }
+}
+
+/// A hierarchical path component.
+#[derive(Clone, Copy, Debug)]
+pub enum Component {
+    /// Component to generate a hardened child key.
+    Hardened(u32),
+    /// Component to generate a normal child key.
+    Normal(u32),
+}
+
+impl FromStr for Component {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        let (value, hardened) = match s.strip_suffix('\'') {
+            Some(value) => (value, true),
+            None => (s, false),
+        };
+
+        let value = value
+            .parse()
+            .with_context(|| format!("invalid BIP-0032 path component '{}'", s))?;
+
+        Ok(if hardened {
+            Component::Hardened(value)
+        } else {
+            Component::Normal(value)
+        })
+    }
+}
