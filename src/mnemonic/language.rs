@@ -1,5 +1,6 @@
 //! Mnemonic language for selecting word lists.
 
+use crate::mnemonic::wordlist::{self, Wordlist};
 use anyhow::{bail, Result};
 use std::{
     fmt::{self, Display, Formatter},
@@ -18,18 +19,30 @@ pub enum Language {
 impl Language {
     /// Splits a mnemonic phrase into its words, returning the detected language
     /// and a vector of **normalized** words.
-    pub fn split(phrase: impl AsRef<str>) -> Result<(Self, Vec<String>)> {
+    pub fn split(phrase: &str) -> Result<(Self, Vec<&str>)> {
         // TODO(nlordell): A lot to do here...
+        let language = Language::English;
         Ok((
-            Language::English,
+            language,
             phrase
-                .as_ref()
                 .trim()
                 .split_whitespace()
                 .filter(|word| !word.is_empty())
-                .map(|word| word.to_lowercase())
                 .collect(),
         ))
+    }
+
+    /// Returns the language's wordlist.
+    pub fn wordlist(self) -> &'static Wordlist<'static> {
+        wordlist::for_language(self)
+    }
+
+    /// Returns the whitespace separator character for the language.
+    pub fn separator(self) -> char {
+        // TODO(nlordell): Languages such as Chinese use a special Unicode
+        // whitepace character as a word separator for their BIP-0039 mnemonic
+        // phrase.
+        ' '
     }
 }
 
@@ -43,7 +56,7 @@ impl Default for Language {
 impl Display for Language {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         f.write_str(match self {
-            Language::English => "english",
+            Language::English => "English",
         })
     }
 }
