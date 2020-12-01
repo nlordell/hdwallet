@@ -1,7 +1,10 @@
 //! Module implementing parsing for BIP-0032 HD paths used for key derivation.
 
 use anyhow::{anyhow, Context as _, Result};
-use std::str::FromStr;
+use std::{
+    fmt::{self, Display, Formatter},
+    str::FromStr,
+};
 
 /// A parsed hierarchical derivation path.
 #[derive(Debug)]
@@ -13,6 +16,17 @@ impl Path {
     /// Returns an iterator
     pub fn components(&self) -> impl Iterator<Item = Component> + '_ {
         self.components.iter().copied()
+    }
+}
+
+impl Display for Path {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.write_str("m")?;
+        for component in self.components() {
+            write!(f, "/{}", component)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -38,6 +52,15 @@ pub enum Component {
     Hardened(u32),
     /// Component to generate a normal child key.
     Normal(u32),
+}
+
+impl Display for Component {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            Self::Hardened(value) => write!(f, "{}'", value),
+            Self::Normal(value) => write!(f, "{}", value),
+        }
+    }
 }
 
 impl FromStr for Component {
