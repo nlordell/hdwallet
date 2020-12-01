@@ -12,8 +12,10 @@ use std::{
     convert::TryInto,
     fmt::{self, Display, Formatter},
     mem,
+    ops::Deref,
     str::FromStr,
 };
+use unicode_normalization::UnicodeNormalization as _;
 
 /// A seed generated from a BIP-0039 mnemonic used for an HD wallet.
 #[derive(Clone, Debug)]
@@ -140,22 +142,19 @@ impl Mnemonic {
     }
 
     /// Gets the PBKDF2 stretched binary seed for this mnemonic.
-    pub fn seed(&self) -> [u8; 64] {
+    pub fn seed(&self, password: impl AsRef<str>) -> Seed {
         const ROUNDS: u32 = 2048;
-        // TODO(nlordell): Support mnemonic passwords. This requires the bytes
-        // to be NFKD normalized.
-        const PASSWORD: &str = "";
 
         let mut buf = [0u8; 64];
-        let salt = format!("mnemonic{}", PASSWORD);
+        let salt = format!("mnemonic{}", password.as_ref());
         pbkdf2::pbkdf2::<Hmac<Sha512>>(
             self.to_phrase().as_bytes(),
-            salt.as_bytes(),
+            salt.nfkd().to_string().as_bytes(),
             ROUNDS,
             &mut buf,
         );
 
-        buf
+        Seed(buf)
     }
 }
 
@@ -170,6 +169,24 @@ impl FromStr for Mnemonic {
 
     fn from_str(s: &str) -> Result<Self> {
         Self::from_phrase(s)
+    }
+}
+
+/// A 64-byte seed derived from a BIP-0039 mnemonic.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Seed([u8; 64]);
+
+impl AsRef<[u8]> for Seed {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
+}
+
+impl Deref for Seed {
+    type Target = [u8; 64];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
@@ -206,16 +223,30 @@ mod tests {
 
     #[test]
     fn mnemonic_phrases() {
-        for &(bytes, phrase) in &[
+        for &(bytes, phrase, password, seed) in &[
             (
                 &hex!("00000000000000000000000000000000")[..],
                 "abandon abandon abandon abandon abandon abandon \
                  abandon abandon abandon abandon abandon about",
+                "TREZOR",
+                hex!(
+                    "c552 57c3 60c0 7c72 029a ebc1 b53c 05ed
+                     0362 ada3 8ead 3e3e 9efa 3708 e534 9553
+                     1f09 a698 7599 d182 64c1 e1c9 2f2c f141
+                     630c 7a3c 4ab7 c81b 2f00 1698 e746 3b04"
+                ),
             ),
             (
                 &hex!("92903465e029df56cab416a53b015396")[..],
                 "myth like bonus scare over problem \
                  client lizard pioneer submit female collect",
+                "",
+                hex!(
+                    "15e7 bbc6 ac54 a721 ad44 0f8e f7d1 fa7c
+                     4f77 ae5e c71e 2418 7649 e9d2 2802 2655
+                     b9e6 fb36 59f8 e4b2 274a c3b1 955b f9e5
+                     8f15 0492 c44e 7aa1 6109 5ba0 ad92 6e9e"
+                ),
             ),
             (
                 &hex!("0000000000000000000000000000000000000000000000000000000000000000")[..],
@@ -223,6 +254,13 @@ mod tests {
                  abandon abandon abandon abandon abandon abandon \
                  abandon abandon abandon abandon abandon abandon \
                  abandon abandon abandon abandon abandon art",
+                "TREZOR",
+                hex!(
+                    "bda8 5446 c684 1370 7090 a520 22ed d26a
+                     1c94 6229 5029 f2e6 0cd7 c4f2 bbd3 0971
+                     70af 7a4d 7324 5caf a9c3 cca8 d561 a7c3
+                     de6f 5d4a 10be 8ed2 a5e6 08d6 8f92 fcc8"
+                ),
             ),
             (
                 &hex!("f585c11aec520db57dd353c69554b21a89b20fb0650966fa0a9d6f74fd989d8f")[..],
@@ -230,31 +268,19 @@ mod tests {
                  warrior heavy shoot primary clutch crush \
                  open amazing screen patrol group space \
                  point ten exist slush involve unfold",
+                "TREZOR",
+                hex!(
+                    "01f5 bced 59de c48e 362f 2c45 b5de 68b9
+                     fd6c 92c6 634f 44d6 d40a ab69 0565 06f0
+                     e355 24a5 1803 4ddc 1192 e1da cd32 c1ed
+                     3eaa 3c3b 131c 88ed 8e7e 54c4 9a5d 0998"
+                ),
             ),
         ] {
             let mnemonic = Mnemonic::from_phrase(phrase).unwrap();
             assert_eq!(mnemonic.as_bytes(), bytes);
+            assert_eq!(*mnemonic.seed(password), seed);
             assert_eq!(mnemonic.to_phrase(), phrase);
         }
-    }
-
-    #[test]
-    fn mnemonic_seed() {
-        let seed = Mnemonic::from_str(
-            "myth like bonus scare over problem \
-             client lizard pioneer submit female collect",
-        )
-        .unwrap()
-        .seed();
-
-        assert_eq!(
-            seed,
-            hex!(
-                "15e7bbc6ac54a721ad440f8ef7d1fa7c
-                 4f77ae5ec71e24187649e9d228022655
-                 b9e6fb3659f8e4b2274ac3b1955bf9e5
-                 8f150492c44e7aa161095ba0ad926e9e"
-            )
-        );
     }
 }
