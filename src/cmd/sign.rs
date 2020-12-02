@@ -1,5 +1,4 @@
-//! Module implementing the `address` subcommand for displaying the public
-//! address for corresponding account.
+//! Module implementing the `sign` subcommand for generating ECDSA signatures.
 
 use crate::{cmd::AccountOptions, hash};
 use anyhow::{Context as _, Result};
@@ -7,7 +6,7 @@ use std::convert::TryInto;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
-#[structopt(about = "print account public address")]
+#[structopt(about = "Sign a message")]
 pub struct Options {
     #[structopt(flatten)]
     account: AccountOptions,

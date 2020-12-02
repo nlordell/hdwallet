@@ -1,6 +1,7 @@
 //! Module containing subcommands.
 
 pub mod address;
+pub mod export;
 pub mod new;
 pub mod sign;
 
@@ -8,7 +9,9 @@ use crate::{account::PrivateKey, hdk, mnemonic::Mnemonic};
 use anyhow::Result;
 use structopt::StructOpt;
 
-/// Shared account options.
+// Shared account options.
+// NOTE: This is intentionally not a doc-comment as it would hijack the sub-
+// command's description.
 #[derive(Debug, StructOpt)]
 struct AccountOptions {
     /// The BIP-0039 mnemonic phrase for seeding the HD wallet.

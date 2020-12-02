@@ -37,6 +37,11 @@ impl PrivateKey {
         Address::from_slice(&hash[12..])
     }
 
+    /// Returns the private key's 32 byte secret.
+    pub fn secret(&self) -> [u8; 32] {
+        *self.0.as_ref()
+    }
+
     /// Generate a signature for the specified message.
     pub fn sign(&self, message: [u8; 32]) -> Signature {
         let message = Message::from_slice(&message).expect("invalid message");

@@ -16,6 +16,7 @@ use structopt::StructOpt;
 )]
 enum Options {
     Address(address::Options),
+    Export(export::Options),
     New(new::Options),
     Sign(sign::Options),
 }
@@ -23,6 +24,7 @@ enum Options {
 fn main() {
     if let Err(err) = match Options::from_args() {
         Options::Address(options) => address::run(options),
+        Options::Export(options) => export::run(options),
         Options::New(options) => new::run(options),
         Options::Sign(options) => sign::run(options),
     } {
