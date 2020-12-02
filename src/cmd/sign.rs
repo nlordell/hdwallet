@@ -6,7 +6,6 @@ use std::convert::TryInto;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
-#[structopt(about = "Sign a message")]
 pub struct Options {
     #[structopt(flatten)]
     account: AccountOptions,
