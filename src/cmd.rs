@@ -9,9 +9,7 @@ use crate::{account::PrivateKey, hdk, mnemonic::Mnemonic};
 use anyhow::Result;
 use structopt::StructOpt;
 
-// Shared account options.
-// NOTE: This is intentionally not a doc-comment as it would hijack the sub-
-// command's description.
+/// Shared account options.
 #[derive(Debug, StructOpt)]
 struct AccountOptions {
     /// The BIP-0039 mnemonic phrase for seeding the HD wallet.

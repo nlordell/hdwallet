@@ -15,9 +15,13 @@ use structopt::StructOpt;
     about = "Hierarchical deterministic wallet for Ethereum"
 )]
 enum Options {
+    #[structopt(about = "Print account public address")]
     Address(address::Options),
+    #[structopt(about = "Export a private key")]
     Export(export::Options),
+    #[structopt(about = "Generate a new HD wallet mnemonic")]
     New(new::Options),
+    #[structopt(about = "Sign a message")]
     Sign(sign::Options),
 }
 

@@ -6,7 +6,6 @@ use anyhow::Result;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
-#[structopt(about = "Print account public address")]
 pub struct Options {
     #[structopt(flatten)]
     account: AccountOptions,
