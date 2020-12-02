@@ -18,3 +18,6 @@ unicode-normalization = "0.1"
 
 [dev-dependencies]
 hex-literal = "0.3"
+
+[patch.crates-io]
+secp256k1 = { git = "https://github.com/rust-bitcoin/rust-secp256k1", rev = "3a2dba0" }
