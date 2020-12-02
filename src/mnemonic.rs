@@ -25,7 +25,7 @@ pub struct Mnemonic {
     /// A buffer containing the mnemonic's binary representation and hash used
     /// for checksums.
     buf: [u8; 64],
-    /// The length of the seed bytes without the 32-byte hash.
+    /// The length of the seed bytes without the 32 byte hash.
     len: usize,
 }
 
@@ -172,7 +172,7 @@ impl FromStr for Mnemonic {
     }
 }
 
-/// A 64-byte seed derived from a BIP-0039 mnemonic.
+/// A 64 byte seed derived from a BIP-0039 mnemonic.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Seed([u8; 64]);
 

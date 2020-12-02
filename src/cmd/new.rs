@@ -6,7 +6,7 @@ use anyhow::Result;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
-#[structopt(about = "generate a new HD wallet mnemonic")]
+#[structopt(about = "Generate a new HD wallet mnemonic")]
 pub struct Options {
     /// The number of words for the mnemonic phrase.
     #[structopt(short = "n", long, default_value = "12")]
