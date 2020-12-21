@@ -101,6 +101,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "ethnum"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "75c1a57ce909887a50637e7cd12002fe33b67af15aa2f307ce59624ea4a57f7f"
+
+[[package]]
 name = "generic-array"
 version = "0.14.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -115,6 +121,7 @@ name = "hdwallet"
 version = "0.0.1"
 dependencies = [
  "anyhow",
+ "ethnum",
  "hex",
  "hex-literal",
  "hmac",
