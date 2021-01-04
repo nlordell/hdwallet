@@ -11,7 +11,7 @@ ethnum = "1"
 hex = "0.4"
 hmac = { version = "0.10", features = ["std"] }
 pbkdf2 = { version = "0.6", default-features = false }
-secp256k1 = { version = "0.19", features = ["recovery"] }
+secp256k1 = { version = "0.20", features = ["recovery"] }
 sha2 = "0.9"
 sha3 = "0.9"
 structopt = "0.3"
@@ -19,6 +19,3 @@ unicode-normalization = "0.1"
 
 [dev-dependencies]
 hex-literal = "0.3"
-
-[patch.crates-io]
-secp256k1 = { git = "https://github.com/rust-bitcoin/rust-secp256k1", rev = "3a2dba0" }
