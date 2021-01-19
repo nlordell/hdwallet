@@ -102,9 +102,9 @@ dependencies = [
 
 [[package]]
 name = "ethnum"
-version = "1.0.1"
+version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "75c1a57ce909887a50637e7cd12002fe33b67af15aa2f307ce59624ea4a57f7f"
+checksum = "887dc6b1e1f9ef25ac52649e19ce610a2520b4c55b48429030782b6c8a70e78a"
 
 [[package]]
 name = "generic-array"
