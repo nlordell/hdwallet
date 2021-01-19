@@ -10,7 +10,10 @@ use secp256k1::{
     key::{PublicKey, SecretKey, ONE_KEY},
     Message, Secp256k1,
 };
-use std::fmt::{self, Debug, Formatter};
+use std::{
+    convert::TryInto,
+    fmt::{self, Debug, Formatter},
+};
 
 /// A struct representing an Ethereum private key.
 pub struct PrivateKey(SecretKey);
@@ -50,13 +53,13 @@ impl PrivateKey {
             .sign_recoverable(&message, &self.0)
             .serialize_compact();
         debug_assert!(matches!(recovery_id.to_i32(), 0 | 1));
+        debug_assert_eq!(raw_signature.len(), 64);
 
-        let mut signature = Signature::default();
-        signature.v = 27 + (recovery_id.to_i32() as u8);
-        signature.r.copy_from_slice(&raw_signature[..32]);
-        signature.s.copy_from_slice(&raw_signature[32..]);
-
-        signature
+        Signature {
+            v: 27 + (recovery_id.to_i32() as u8),
+            r: raw_signature[..32].try_into().unwrap(),
+            s: raw_signature[32..].try_into().unwrap(),
+        }
     }
 }
 
