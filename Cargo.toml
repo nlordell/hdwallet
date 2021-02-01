@@ -10,7 +10,7 @@ anyhow = "1"
 ethnum = "1"
 hex = "0.4"
 hmac = { version = "0.10", features = ["std"] }
-pbkdf2 = { version = "0.6", default-features = false }
+pbkdf2 = { version = "0.7", default-features = false }
 secp256k1 = { version = "0.20", features = ["recovery"] }
 sha2 = "0.9"
 sha3 = "0.9"
