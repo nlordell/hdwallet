@@ -3,7 +3,7 @@
 use std::fmt::{self, Display, Formatter};
 
 /// A secp256k1 signature.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Signature {
     /// Signature V value in Electrum notation.
     pub v: u8,
