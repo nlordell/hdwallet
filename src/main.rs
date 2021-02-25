@@ -4,6 +4,7 @@ mod hash;
 mod hdk;
 mod mnemonic;
 mod rand;
+mod transaction;
 
 use crate::cmd::*;
 use std::process;
