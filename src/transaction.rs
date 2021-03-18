@@ -1,7 +1,10 @@
 //! Module defining Ethereum transaction data as well as an RLP encoding
 //! implementation.
 
-use crate::account::{Address, Signature};
+use crate::{
+    account::{Address, Signature},
+    hash,
+};
 use ethnum::U256;
 
 /// An Ethereum transaction.
@@ -52,6 +55,11 @@ impl Transaction {
             &rlp::uint(r),
             &rlp::uint(s),
         ])
+    }
+
+    /// Returns the 32-byte message used for signing.
+    pub fn signing_message(&self, chain_id: u64) -> [u8; 32] {
+        hash::keccak256(self.encode(chain_id, None))
     }
 }
 
@@ -116,7 +124,7 @@ fn replay_protection(chain_id: u64, v: u8) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{account::PrivateKey, ganache::DETERMINISTIC_PRIVATE_KEY, hash};
+    use crate::{account::PrivateKey, ganache::DETERMINISTIC_PRIVATE_KEY};
     use hex_literal::hex;
 
     const CHAIN_ID: u64 = 0x1337;
@@ -146,8 +154,7 @@ mod tests {
     #[test]
     fn rlp_encode_with_signature() {
         let key = PrivateKey::new(DETERMINISTIC_PRIVATE_KEY).unwrap();
-        let message = hash::keccak256(transaction().encode(CHAIN_ID, None));
-        let signature = key.sign(message);
+        let signature = key.sign(transaction().signing_message(CHAIN_ID));
 
         assert_eq!(
             transaction().encode(CHAIN_ID, Some(signature)),
