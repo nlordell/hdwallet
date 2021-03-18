@@ -1,10 +1,15 @@
 //! Module implementing the `sign` subcommand for generating ECDSA signatures.
 
-use crate::{account::Address, cmd::AccountOptions, hash, transaction::Transaction};
+use crate::{
+    account::Address,
+    cmd::{self, AccountOptions},
+    hash,
+    transaction::Transaction,
+};
 use anyhow::{anyhow, Context as _, Result};
 use ethnum::U256;
 use std::convert::TryInto;
-use structopt::{clap::arg_enum, StructOpt};
+use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 pub struct Options {
@@ -35,16 +40,9 @@ enum Data {
 
     /// Sign an Ethereum message.
     Message {
-        /// The message format. Specify "hex" if the message is a hexadecimal
-        /// encoded string.
-        #[structopt(
-            short,
-            long,
-            default_value = "string",
-            case_insensitive = true,
-            possible_values = &Format::variants(),
-        )]
-        format: Format,
+        /// The message is encoded as a hexadecimal string.
+        #[structopt(short, long)]
+        hex: bool,
 
         /// The message to sign in the "eth_sign" scheme. This message will be
         /// prefixed with "\x19Ethereum Signed Message:\n" and its length before
@@ -55,15 +53,9 @@ enum Data {
 
     /// Sign a raw data.
     Raw {
-        /// The message should be Keccak-256 hashed for signing.
-        #[structopt(short, long)]
-        hash: bool,
-
-        /// The 32 byte message or binary data to sign specified as a
-        /// hexadecimal string. If "hash" is not specified, then the specified
-        /// value must be exactly 32 bytes long.
-        #[structopt(name = "BYTES", parse(try_from_str = permissive_hex))]
-        bytes: Box<[u8]>,
+        /// The 32 byte message to sign specified as a hexadecimal string.
+        #[structopt(name = "BYTES", parse(try_from_str = permissive_hex_digest))]
+        message: [u8; 32],
     },
 }
 
@@ -93,16 +85,8 @@ struct TransactionOptions {
     value: U256,
 
     /// The transaction input calldata.
-    #[structopt(short, long, default_value = "0x", parse(try_from_str = permissive_hex))]
+    #[structopt(short, long, default_value = "0x", parse(try_from_str = cmd::permissive_hex))]
     data: Box<[u8]>,
-}
-
-arg_enum! {
-    #[derive(Debug)]
-    enum Format {
-        String,
-        Hex,
-    }
 }
 
 impl Data {
@@ -115,10 +99,11 @@ impl Data {
             } => Ok(hash::keccak256(
                 &transaction.as_parameters().encode(*chain_id, None),
             )),
-            Data::Message { format, message } => {
-                let bytes = match format {
-                    Format::String => message.clone().into_bytes().into_boxed_slice(),
-                    Format::Hex => permissive_hex(&message)?,
+            Data::Message { hex, message } => {
+                let bytes = if *hex {
+                    cmd::permissive_hex(&message)?
+                } else {
+                    message.clone().into_bytes().into_boxed_slice()
                 };
 
                 let mut buffer = Vec::new();
@@ -128,16 +113,7 @@ impl Data {
 
                 Ok(hash::keccak256(&buffer))
             }
-            Data::Raw { hash, bytes } => {
-                if *hash {
-                    Ok(hash::keccak256(&bytes))
-                } else {
-                    bytes
-                        .as_ref()
-                        .try_into()
-                        .context("data for signing must be exactly 32 bytes long or hashed")
-                }
-            }
+            Data::Raw { message } => Ok(*message),
         }
     }
 }
@@ -177,13 +153,10 @@ pub fn run(options: Options) -> Result<()> {
     Ok(())
 }
 
-fn permissive_hex(s: &str) -> Result<Box<[u8]>> {
-    let trimmed = s.chars().filter(|c| !c.is_whitespace()).collect::<String>();
-    let hex_string = trimmed.strip_prefix("0x").unwrap_or(&trimmed);
-    let bytes = hex::decode(&hex_string)?;
-    // NOTE: Use a boxed slice instead of a `Vec` as the former has special
-    // scemantics with `structopt`.
-    Ok(bytes.into_boxed_slice())
+fn permissive_hex_digest(s: &str) -> Result<[u8; 32]> {
+    Ok(cmd::permissive_hex(s)?[..]
+        .try_into()
+        .context("message for signing must be exactly 32 bytes long")?)
 }
 
 fn ether(s: &str) -> Result<U256> {

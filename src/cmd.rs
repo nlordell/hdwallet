@@ -2,6 +2,7 @@
 
 pub mod address;
 pub mod export;
+pub mod hash;
 pub mod new;
 pub mod sign;
 
@@ -42,4 +43,15 @@ impl AccountOptions {
         }?;
         hdk::derive(seed, &path)
     }
+}
+
+/// Permissive hex encoding parsing, ignoring all whitespace and accepting bot
+/// upper and lower-case string with an optional `0x` prefix.
+fn permissive_hex(s: &str) -> Result<Box<[u8]>> {
+    let trimmed = s.chars().filter(|c| !c.is_whitespace()).collect::<String>();
+    let hex_string = trimmed.strip_prefix("0x").unwrap_or(&trimmed);
+    let bytes = hex::decode(&hex_string)?;
+    // NOTE: Use a boxed slice instead of a `Vec` as the former has special
+    // scemantics with `structopt`.
+    Ok(bytes.into_boxed_slice())
 }

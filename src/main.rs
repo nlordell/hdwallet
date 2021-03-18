@@ -23,6 +23,8 @@ enum Options {
     Address(address::Options),
     #[structopt(about = "Export a private key")]
     Export(export::Options),
+    #[structopt(about = "Keccak256 hash data")]
+    Hash(cmd::hash::Options),
     #[structopt(about = "Generate a new HD wallet mnemonic")]
     New(new::Options),
     #[structopt(about = "Sign a message")]
@@ -33,6 +35,7 @@ fn main() {
     if let Err(err) = match Options::from_args() {
         Options::Address(options) => address::run(options),
         Options::Export(options) => export::run(options),
+        Options::Hash(options) => cmd::hash::run(options),
         Options::New(options) => new::run(options),
         Options::Sign(options) => sign::run(options),
     } {
