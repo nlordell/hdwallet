@@ -6,6 +6,9 @@ mod mnemonic;
 mod rand;
 mod transaction;
 
+#[cfg(test)]
+mod ganache;
+
 use crate::cmd::*;
 use std::process;
 use structopt::StructOpt;

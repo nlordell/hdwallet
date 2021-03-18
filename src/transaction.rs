@@ -112,3 +112,51 @@ fn replay_protection(chain_id: u64, v: u8) -> u64 {
     let v = v as u64;
     v + 8 + chain_id * 2
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{account::PrivateKey, ganache::DETERMINISTIC_PRIVATE_KEY, hash};
+    use hex_literal::hex;
+
+    const CHAIN_ID: u64 = 0x1337;
+
+    fn transaction() -> Transaction {
+        Transaction {
+            nonce: U256::new(7777),
+            gas_price: U256::new(100_000_000_000),
+            gas: U256::new(150_000),
+            to: Some(Address(hex!("7070707070707070707070707070707070707070"))),
+            value: U256::new(42_000_000_000_000_000_000),
+            data: hex!("01020304").into(),
+        }
+    }
+
+    #[test]
+    fn rlp_encode_for_signing() {
+        assert_eq!(
+            transaction().encode(CHAIN_ID, None),
+            hex!(
+                "f6821e6185174876e800830249f0947070707070707070707070707070707070
+                 707070890246ddf9797668000084010203048213378080"
+            ),
+        )
+    }
+
+    #[test]
+    fn rlp_encode_with_signature() {
+        let key = PrivateKey::new(DETERMINISTIC_PRIVATE_KEY).unwrap();
+        let message = hash::keccak256(transaction().encode(CHAIN_ID, None));
+        let signature = key.sign(message);
+
+        assert_eq!(
+            transaction().encode(CHAIN_ID, Some(signature)),
+            hex!(
+                "f876821e6185174876e800830249f09470707070707070707070707070707070
+                 70707070890246ddf979766800008401020304822691a076382953503398303f
+                 e8c3e3d235e8f71adc39fb90fcda99514e324d96bad253a044351903896d0b6f
+                 8a3ee9543c1e23ec3bab29a4ae5cae1a6b7b2c811105264f"
+            ),
+        )
+    }
+}

@@ -70,14 +70,12 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{account::Address, mnemonic::Mnemonic};
+    use crate::{account::Address, ganache::DETERMINISTIC_MNEMONIC, mnemonic::Mnemonic};
     use hex_literal::hex;
 
     #[test]
     fn ganache_deterministic_mnemonic() {
-        const GANACHE_DETERMINISTIC_MNEMONIC: &str = "myth like bonus scare over problem \
-                                                      client lizard pioneer submit female collect";
-        let mnemonic = GANACHE_DETERMINISTIC_MNEMONIC.parse::<Mnemonic>().unwrap();
+        let mnemonic = DETERMINISTIC_MNEMONIC.parse::<Mnemonic>().unwrap();
         let path = "m/44'/60'/0'/0/0".parse::<Path>().unwrap();
 
         let account = derive(mnemonic.seed(""), &path).unwrap();

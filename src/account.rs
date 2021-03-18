@@ -78,14 +78,12 @@ impl Drop for PrivateKey {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ganache::DETERMINISTIC_PRIVATE_KEY;
     use hex_literal::hex;
-
-    const GANACHE_DETERMINISTIC_PRIVATE_KEY: [u8; 32] =
-        hex!("4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d");
 
     #[test]
     fn ganache_determinitic_address() {
-        let key = PrivateKey::new(GANACHE_DETERMINISTIC_PRIVATE_KEY).unwrap();
+        let key = PrivateKey::new(DETERMINISTIC_PRIVATE_KEY).unwrap();
         assert_eq!(
             *key.address(),
             hex!("90F8bf6A479f320ead074411a4B0e7944Ea8c9C1"),
@@ -94,7 +92,7 @@ mod tests {
 
     #[test]
     fn ganache_deterministic_signature() {
-        let key = PrivateKey::new(GANACHE_DETERMINISTIC_PRIVATE_KEY).unwrap();
+        let key = PrivateKey::new(DETERMINISTIC_PRIVATE_KEY).unwrap();
         let message = hash::keccak256(b"\x19Ethereum Signed Message:\n12Hello World!");
         assert_eq!(
             key.sign(message),
