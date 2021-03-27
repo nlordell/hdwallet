@@ -97,7 +97,7 @@ impl Data {
                 chain_id,
                 ..
             } => Ok(hash::keccak256(
-                &transaction.as_parameters().encode(*chain_id, None),
+                &transaction.as_parameters().signing_message(*chain_id),
             )),
             Data::Message { hex, message } => {
                 let bytes = if *hex {
