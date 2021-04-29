@@ -154,9 +154,9 @@ pub fn run(options: Options) -> Result<()> {
 }
 
 fn permissive_hex_digest(s: &str) -> Result<[u8; 32]> {
-    Ok(cmd::permissive_hex(s)?[..]
+    cmd::permissive_hex(s)?[..]
         .try_into()
-        .context("message for signing must be exactly 32 bytes long")?)
+        .context("message for signing must be exactly 32 bytes long")
 }
 
 fn ether(s: &str) -> Result<U256> {
