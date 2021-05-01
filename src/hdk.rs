@@ -18,7 +18,7 @@ const HARDENED: u32 = 0x80000000;
 /// Creates a new extended private key from a seed.
 pub fn derive(seed: impl AsRef<[u8]>, path: &Path) -> Result<PrivateKey> {
     let mut extended_key = {
-        let mut hmac = Hmac::<Sha512>::new_varkey(b"Bitcoin seed")?;
+        let mut hmac = Hmac::<Sha512>::new_from_slice(b"Bitcoin seed")?;
         hmac.update(seed.as_ref());
         hmac.finalize().into_bytes()
     };
@@ -27,7 +27,7 @@ pub fn derive(seed: impl AsRef<[u8]>, path: &Path) -> Result<PrivateKey> {
     for (i, component) in path.components().enumerate() {
         let (secret, chain_code) = extended_key.split_at(32);
 
-        let mut hmac: Hmac<Sha512> = Hmac::<Sha512>::new_varkey(chain_code)?;
+        let mut hmac: Hmac<Sha512> = Hmac::<Sha512>::new_from_slice(chain_code)?;
         let value = match component {
             Component::Hardened(value) => {
                 hmac.update(&[0]);
