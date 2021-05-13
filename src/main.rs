@@ -25,6 +25,8 @@ enum Options {
     Export(export::Options),
     #[structopt(about = "Keccak256 hash data")]
     Hash(cmd::hash::Options),
+    #[structopt(about = "Hex encoding and decoding")]
+    Hex(cmd::hex::Options),
     #[structopt(about = "Generate a new HD wallet mnemonic")]
     New(new::Options),
     #[structopt(about = "Sign a message")]
@@ -36,6 +38,7 @@ fn main() {
         Options::Address(options) => address::run(options),
         Options::Export(options) => export::run(options),
         Options::Hash(options) => cmd::hash::run(options),
+        Options::Hex(options) => cmd::hex::run(options),
         Options::New(options) => new::run(options),
         Options::Sign(options) => sign::run(options),
     } {

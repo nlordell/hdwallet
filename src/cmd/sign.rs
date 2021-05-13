@@ -8,7 +8,7 @@ use crate::{
 };
 use anyhow::{anyhow, Context as _, Result};
 use ethnum::U256;
-use std::convert::TryInto;
+use std::{convert::TryInto, path::PathBuf};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -40,15 +40,11 @@ enum Data {
 
     /// Sign an Ethereum message.
     Message {
-        /// The message is encoded as a hexadecimal string.
-        #[structopt(short, long)]
-        hex: bool,
-
-        /// The message to sign in the "eth_sign" scheme. This message will be
-        /// prefixed with "\x19Ethereum Signed Message:\n" and its length before
-        /// hashing and singing.
+        /// Path to the message to sign in the "eth_sign" scheme. This message
+        /// will be prefixed with "\x19Ethereum Signed Message:\n" and its
+        /// length before hashing and singing.
         #[structopt(name = "MESSAGE")]
-        message: String,
+        message: PathBuf,
     },
 
     /// Sign a raw data.
@@ -99,14 +95,10 @@ impl Data {
             } => Ok(hash::keccak256(
                 &transaction.as_parameters().signing_message(*chain_id),
             )),
-            Data::Message { hex, message } => {
-                let bytes = if *hex {
-                    cmd::permissive_hex(&message)?
-                } else {
-                    message.clone().into_bytes().into_boxed_slice()
-                };
+            Data::Message { message } => {
+                let bytes = cmd::read_input(&message)?;
 
-                let mut buffer = Vec::new();
+                let mut buffer = Vec::with_capacity(46 + bytes.len());
                 buffer.extend_from_slice(b"\x19Ethereum Signed Message:\n");
                 buffer.extend_from_slice(bytes.len().to_string().as_bytes());
                 buffer.extend_from_slice(&bytes);
