@@ -1,5 +1,8 @@
-//! Module implementing the `address` subcommand for displaying the public
-//! address for corresponding account.
+//! Module implementing the `hex` subcommand for encoding and decoding
+//! hexadecimal strings.
+//!
+//! This subcommand exists because of the lack of an "easy" POSIX-compatible
+//! way of decoding hex.
 
 use crate::cmd;
 use anyhow::Result;
