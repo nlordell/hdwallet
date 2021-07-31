@@ -29,6 +29,8 @@ enum Options {
     Hex(cmd::hex::Options),
     #[structopt(about = "Generate a new HD wallet mnemonic")]
     New(new::Options),
+    #[structopt(about = "Export the public key for an account")]
+    PublicKey(public_key::Options),
     #[structopt(about = "Sign a message")]
     Sign(sign::Options),
 }
@@ -41,6 +43,7 @@ fn main() {
         Options::Hex(options) => cmd::hex::run(options),
         Options::New(options) => new::run(options),
         Options::Sign(options) => sign::run(options),
+        Options::PublicKey(options) => public_key::run(options),
     } {
         if cfg!(debug_assertions) {
             eprintln!("ERROR: {:?}", err);
