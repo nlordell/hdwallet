@@ -5,6 +5,7 @@ pub mod export;
 pub mod hash;
 pub mod hex;
 pub mod new;
+pub mod public_key;
 pub mod sign;
 
 use crate::{account::PrivateKey, hdk, mnemonic::Mnemonic};

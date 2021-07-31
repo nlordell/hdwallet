@@ -25,10 +25,15 @@ impl PrivateKey {
         Ok(PrivateKey(key))
     }
 
+    /// Returns the public key for the private key.
+    pub fn public(&self) -> PublicKey {
+        let secp = Secp256k1::signing_only();
+        PublicKey::from_secret_key(&secp, &self.0)
+    }
+
     /// Returns the public address for the private key.
     pub fn address(&self) -> Address {
-        let secp = Secp256k1::signing_only();
-        let public_key = PublicKey::from_secret_key(&secp, &self.0).serialize_uncompressed();
+        let public_key = self.public().serialize_uncompressed();
 
         // NOTE: An ethereum address is the last 20 bytes of the keccak hash of
         // the public key. Note that `libsecp256k1` public key is serialized
