@@ -30,7 +30,7 @@ enum Data {
         /// The chain ID to sign this transaction for. Use 0 to indicate no
         /// relay protection should be used.
         #[structopt(short, long, env)]
-        chain_id: u64,
+        chain_id: U256,
 
         /// Only output the transaction signature instead of the RLP-encoded
         /// signed transaction.

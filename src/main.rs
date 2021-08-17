@@ -9,10 +9,10 @@ mod transaction;
 #[cfg(test)]
 mod ganache;
 
-use crate::cmd::*;
 use std::process;
 use structopt::StructOpt;
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, StructOpt)]
 #[structopt(
     name = "hdwallet",
@@ -20,30 +20,30 @@ use structopt::StructOpt;
 )]
 enum Options {
     #[structopt(about = "Print account public address")]
-    Address(address::Options),
+    Address(cmd::address::Options),
     #[structopt(about = "Export a private key")]
-    Export(export::Options),
+    Export(cmd::export::Options),
     #[structopt(about = "Keccak256 hash data")]
     Hash(cmd::hash::Options),
     #[structopt(about = "Hex encoding and decoding")]
     Hex(cmd::hex::Options),
     #[structopt(about = "Generate a new HD wallet mnemonic")]
-    New(new::Options),
+    New(cmd::new::Options),
     #[structopt(about = "Export the public key for an account")]
-    PublicKey(public_key::Options),
+    PublicKey(cmd::public_key::Options),
     #[structopt(about = "Sign a message")]
-    Sign(sign::Options),
+    Sign(cmd::sign::Options),
 }
 
 fn main() {
     if let Err(err) = match Options::from_args() {
-        Options::Address(options) => address::run(options),
-        Options::Export(options) => export::run(options),
+        Options::Address(options) => cmd::address::run(options),
+        Options::Export(options) => cmd::export::run(options),
         Options::Hash(options) => cmd::hash::run(options),
         Options::Hex(options) => cmd::hex::run(options),
-        Options::New(options) => new::run(options),
-        Options::Sign(options) => sign::run(options),
-        Options::PublicKey(options) => public_key::run(options),
+        Options::New(options) => cmd::new::run(options),
+        Options::Sign(options) => cmd::sign::run(options),
+        Options::PublicKey(options) => cmd::public_key::run(options),
     } {
         if cfg!(debug_assertions) {
             eprintln!("ERROR: {:?}", err);

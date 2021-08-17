@@ -27,28 +27,24 @@ pub struct Transaction {
 
 impl Transaction {
     /// Returns the RLP encoded transaction with an optional signature.
-    pub fn encode(&self, chain_id: u64, signature: Option<Signature>) -> Vec<u8> {
+    pub fn encode(&self, chain_id: U256, signature: Option<Signature>) -> Vec<u8> {
         // NOTE: This is currently not at all optimal in terms of memory
         // allocations, but we don't really care.
-        let (v, r, s) = if let Some(Signature { v, r, s }) = signature {
+        let (v, r, s) = signature.map_or((chain_id, U256::ZERO, U256::ZERO), |signature| {
             (
-                replay_protection(chain_id, v),
-                U256::from_be_bytes(r),
-                U256::from_be_bytes(s),
+                signature.v_replay_protected(chain_id),
+                U256::from_be_bytes(signature.r),
+                U256::from_be_bytes(signature.s),
             )
-        } else {
-            (chain_id, U256::ZERO, U256::ZERO)
-        };
+        });
 
         rlp::list(&[
             &rlp::uint(self.nonce)[..],
             &rlp::uint(self.gas_price),
             &rlp::uint(self.gas),
-            &if let Some(address) = self.to {
-                rlp::bytes(&*address)
-            } else {
-                rlp::bytes(b"")
-            },
+            &self
+                .to
+                .map_or_else(|| rlp::bytes(b""), |to| rlp::bytes(&*to)),
             &rlp::uint(self.value),
             &rlp::bytes(&self.data),
             &rlp::uint(v),
@@ -58,14 +54,14 @@ impl Transaction {
     }
 
     /// Returns the 32-byte message used for signing.
-    pub fn signing_message(&self, chain_id: u64) -> [u8; 32] {
+    pub fn signing_message(&self, chain_id: U256) -> [u8; 32] {
         hash::keccak256(self.encode(chain_id, None))
     }
 }
 
 /// Tiny RLP encoding implementation.
 mod rlp {
-    use ethnum::AsU256;
+    use ethnum::U256;
 
     /// RLP encode some bytes.
     pub fn bytes(bytes: &[u8]) -> Vec<u8> {
@@ -107,18 +103,10 @@ mod rlp {
 
     /// RLP encode a unsigned integer. This ensures that it is shortned to its
     /// shortest little endian byte representation.
-    pub fn uint(value: impl AsU256) -> Vec<u8> {
-        let value = value.as_u256();
+    pub fn uint(value: U256) -> Vec<u8> {
         let start = value.leading_zeros() / 8;
         bytes(&value.to_be_bytes()[start as usize..])
     }
-}
-
-/// Apply EIP-155 replay protection to the specified `v` value.
-fn replay_protection(chain_id: u64, v: u8) -> u64 {
-    assert!(v == 27 || v == 28, "invalid signature v-value");
-    let v = v as u64;
-    v + 8 + chain_id * 2
 }
 
 #[cfg(test)]
@@ -127,7 +115,7 @@ mod tests {
     use crate::{account::PrivateKey, ganache::DETERMINISTIC_PRIVATE_KEY};
     use hex_literal::hex;
 
-    const CHAIN_ID: u64 = 0x1337;
+    const CHAIN_ID: U256 = U256::new(0x1337);
 
     fn transaction() -> Transaction {
         Transaction {

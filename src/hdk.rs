@@ -13,7 +13,7 @@ use secp256k1::{
 use sha2::Sha512;
 
 /// A value indicating a path component is hardened.
-const HARDENED: u32 = 0x80000000;
+const HARDENED: u32 = 0x8000_0000;
 
 /// Creates a new extended private key from a seed.
 pub fn derive(seed: impl AsRef<[u8]>, path: &Path) -> Result<PrivateKey> {

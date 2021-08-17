@@ -42,6 +42,7 @@ impl Language {
         // TODO(nlordell): Languages such as Chinese use a special Unicode
         // whitepace character as a word separator for their BIP-0039 mnemonic
         // phrase.
+        let _ = self;
         ' '
     }
 }
