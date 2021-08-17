@@ -12,11 +12,7 @@ pub const WORD_COUNT: usize = 2048;
 impl<'a> Wordlist<'a> {
     /// Parses a list of newline-separated words.
     fn parse(words: &'a str) -> Wordlist<'a> {
-        let words = words
-            .trim()
-            .split('\n')
-            .map(|word| word.trim())
-            .collect::<Vec<_>>();
+        let words = words.trim().split('\n').map(str::trim).collect::<Vec<_>>();
 
         debug_assert_eq!(words.len(), WORD_COUNT);
         debug_assert!(words

@@ -3,7 +3,10 @@
 mod address;
 mod signature;
 
-pub use self::{address::Address, signature::Signature};
+pub use self::{
+    address::Address,
+    signature::{Parity, Signature},
+};
 use crate::hash;
 use anyhow::Result;
 use secp256k1::{
@@ -61,7 +64,11 @@ impl PrivateKey {
         debug_assert_eq!(raw_signature.len(), 64);
 
         Signature {
-            v: 27 + (recovery_id.to_i32() as u8),
+            y_parity: match recovery_id.to_i32() {
+                0 => Parity::Even,
+                1 => Parity::Odd,
+                n => unreachable!("non 0 or 1 signature y-parity bit {}", n),
+            },
             r: raw_signature[..32].try_into().unwrap(),
             s: raw_signature[32..].try_into().unwrap(),
         }
@@ -76,7 +83,7 @@ impl Debug for PrivateKey {
 
 impl Drop for PrivateKey {
     fn drop(&mut self) {
-        self.0 = ONE_KEY
+        self.0 = ONE_KEY;
     }
 }
 
@@ -102,7 +109,7 @@ mod tests {
         assert_eq!(
             key.sign(message),
             Signature {
-                v: 28,
+                y_parity: Parity::Odd,
                 r: hex!("408790f153cbfa2722fc708a57d97a43b24429724cf060df7c915d468c43bd84"),
                 s: hex!("61c96aac95ce37d7a31087b6634f4a3ea439a9f704b5c818584fa2a32fa83859"),
             },

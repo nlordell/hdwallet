@@ -45,7 +45,7 @@ impl Mnemonic {
     pub fn random(language: Language, mnemonic_length: usize) -> Result<Self> {
         let len = mnemonic_to_byte_length(mnemonic_length)?;
         let buf = {
-            let mut buf = [0u8; 64];
+            let mut buf = [0; 64];
             let (seed, hash) = buf.split_at_mut(len);
 
             rand::get_entropy(&mut *seed)?;
@@ -65,10 +65,10 @@ impl Mnemonic {
         let buf = {
             let wordlist = language.wordlist();
 
-            let mut buf = [0u8; 64];
+            let mut buf = [0; 64];
             let (seed, hash) = buf.split_at_mut(len);
 
-            let mut acc = 0usize;
+            let mut acc = 0;
             let mut bit_offset = 0;
             let mut byte_offset = 0;
             for word in &words {
@@ -134,7 +134,7 @@ impl Mnemonic {
                 & WORD_MASK;
 
             buf.push_str(wordlist.word(index as _));
-            buf.push(separator)
+            buf.push(separator);
         }
 
         buf.pop();
@@ -145,7 +145,7 @@ impl Mnemonic {
     pub fn seed(&self, password: impl AsRef<str>) -> Seed {
         const ROUNDS: u32 = 2048;
 
-        let mut buf = [0u8; 64];
+        let mut buf = [0; 64];
         let salt = format!("mnemonic{}", password.as_ref());
         pbkdf2::pbkdf2::<Hmac<Sha512>>(
             self.to_phrase().as_bytes(),
