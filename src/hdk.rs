@@ -63,7 +63,7 @@ where
     C: Signing,
 {
     let secret_key = SecretKey::from_slice(secret)?;
-    let public_key = PublicKey::from_secret_key(&secp, &secret_key);
+    let public_key = PublicKey::from_secret_key(secp, &secret_key);
     Ok(public_key.serialize())
 }
 
