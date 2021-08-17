@@ -96,7 +96,7 @@ impl Data {
                 &transaction.as_parameters().signing_message(*chain_id),
             )),
             Data::Message { message } => {
-                let bytes = cmd::read_input(&message)?;
+                let bytes = cmd::read_input(message)?;
 
                 let mut buffer = Vec::with_capacity(46 + bytes.len());
                 buffer.extend_from_slice(b"\x19Ethereum Signed Message:\n");

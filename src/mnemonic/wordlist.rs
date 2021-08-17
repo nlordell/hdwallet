@@ -35,9 +35,7 @@ impl<'a> Wordlist<'a> {
         // spelling mistakes as well as only consider the first letters of the
         // word as long as it is unique. Additionally, certain languages have
         // equivalent characters like Spanish with 'ñ' and 'n'.
-        self.0
-            .binary_search_by_key(&word.as_ref(), |word| &word)
-            .ok()
+        self.0.binary_search(&word.as_ref()).ok()
     }
 
     /// Returns the word for the specified index.
@@ -48,7 +46,7 @@ impl<'a> Wordlist<'a> {
     /// list: it must be less than `WORD_COUNT` or `1024`.
     pub fn word(&'a self, index: usize) -> &'a str {
         assert!(index < WORD_COUNT, "invalid word index");
-        &self.0[index]
+        self.0[index]
     }
 }
 
