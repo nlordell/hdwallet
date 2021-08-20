@@ -4,6 +4,7 @@ mod hash;
 mod hdk;
 mod mnemonic;
 mod rand;
+mod serialization;
 mod transaction;
 
 #[cfg(test)]

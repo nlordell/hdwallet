@@ -1,13 +1,11 @@
 //! Module implementing the `sign` subcommand for generating ECDSA signatures.
 
 use crate::{
-    account::Address,
     cmd::{self, AccountOptions},
     hash,
-    transaction::Transaction,
+    transaction::{LegacyTransaction, Transaction},
 };
-use anyhow::{anyhow, Context as _, Result};
-use ethnum::U256;
+use anyhow::{ensure, Context as _, Result};
 use std::{convert::TryInto, path::PathBuf};
 use structopt::StructOpt;
 
@@ -24,18 +22,19 @@ pub struct Options {
 enum Data {
     /// Sign an Ethereum transaction.
     Transaction {
-        #[structopt(flatten)]
-        transaction: TransactionOptions,
-
-        /// The chain ID to sign this transaction for. Use 0 to indicate no
-        /// relay protection should be used.
-        #[structopt(short, long, env)]
-        chain_id: U256,
+        /// Path to transaction to sign in JSON format.
+        #[structopt(name = "MESSAGE")]
+        transaction: PathBuf,
 
         /// Only output the transaction signature instead of the RLP-encoded
         /// signed transaction.
         #[structopt(long)]
         signature_only: bool,
+
+        /// Force allowing legacy transactions without a chain ID for relay
+        /// protection. Use this care!
+        #[structopt(long)]
+        allow_missing_relay_protection: bool,
     },
 
     /// Sign an Ethereum message.
@@ -55,92 +54,44 @@ enum Data {
     },
 }
 
-#[derive(Debug, StructOpt)]
-struct TransactionOptions {
-    /// The transaction nonce.
-    #[structopt(short, long)]
-    nonce: U256,
-
-    /// The value of the transaction. This can be either a decimal GWei
-    /// value, or a "0x"-prefixed hexadecimal Wei value.
-    #[structopt(short = "p", long, parse(try_from_str = gwei))]
-    gas_price: U256,
-
-    /// The gas limit for the transaction. Can use `M` and `K` suffixes for
-    /// million and thousand respectively.
-    #[structopt(short, long, default_value = "21K", parse(try_from_str = gas))]
-    gas: U256,
-
-    /// The transaction recipient. Omit for contract creation transactions.
-    #[structopt(short, long)]
-    to: Option<Address>,
-
-    /// The value of the transaction. This can be either a decimal Ether
-    /// value, or a "0x"-prefixed hexadecimal Wei value.
-    #[structopt(short, long, default_value = "0", parse(try_from_str = ether))]
-    value: U256,
-
-    /// The transaction input calldata.
-    #[structopt(short, long, default_value = "0x", parse(try_from_str = cmd::permissive_hex))]
-    data: Box<[u8]>,
-}
-
-impl Data {
-    fn message(&self) -> Result<[u8; 32]> {
-        match self {
-            Data::Transaction {
-                transaction,
-                chain_id,
-                ..
-            } => Ok(hash::keccak256(
-                &transaction.as_parameters().signing_message(*chain_id),
-            )),
-            Data::Message { message } => {
-                let bytes = cmd::read_input(message)?;
-
+pub fn run(options: Options) -> Result<()> {
+    let account = options.account.private_key()?;
+    match options.data {
+        Data::Transaction {
+            transaction,
+            signature_only,
+            allow_missing_relay_protection,
+        } => {
+            let transaction =
+                serde_json::from_slice::<Transaction>(&cmd::read_input(&transaction)?)?;
+            if let Transaction::Legacy(LegacyTransaction { chain_id: None, .. }) = &transaction {
+                ensure!(
+                    allow_missing_relay_protection,
+                    "Signed legacy transaction without chain ID. \
+                     Use `--allow-missing-relay-protection` if this was intentional.",
+                );
+            }
+            let signature = account.sign(transaction.signing_message());
+            if signature_only {
+                println!("{}", signature);
+            } else {
+                println!("0x{}", hex::encode(transaction.encode(signature)));
+            }
+        }
+        Data::Message { message } => {
+            let bytes = cmd::read_input(&message)?;
+            let message = hash::keccak256({
                 let mut buffer = Vec::with_capacity(46 + bytes.len());
                 buffer.extend_from_slice(b"\x19Ethereum Signed Message:\n");
                 buffer.extend_from_slice(bytes.len().to_string().as_bytes());
                 buffer.extend_from_slice(&bytes);
-
-                Ok(hash::keccak256(&buffer))
-            }
-            Data::Raw { message } => Ok(*message),
+                buffer
+            });
+            println!("{}", account.sign(message));
         }
-    }
-}
-
-impl TransactionOptions {
-    fn as_parameters(&self) -> Transaction {
-        Transaction {
-            nonce: self.nonce,
-            gas_price: self.gas_price,
-            gas: self.gas,
-            to: self.to,
-            value: self.value,
-            data: self.data.clone().into(),
+        Data::Raw { message } => {
+            println!("{}", account.sign(message));
         }
-    }
-}
-
-pub fn run(options: Options) -> Result<()> {
-    let message = options.data.message()?;
-    let signature = options.account.private_key()?.sign(message);
-
-    match options.data {
-        Data::Transaction {
-            transaction,
-            chain_id,
-            signature_only: false,
-        } => println!(
-            "0x{}",
-            hex::encode(
-                transaction
-                    .as_parameters()
-                    .encode(chain_id, Some(signature))
-            )
-        ),
-        _ => println!("{}", signature),
     }
     Ok(())
 }
@@ -149,51 +100,4 @@ fn permissive_hex_digest(s: &str) -> Result<[u8; 32]> {
     cmd::permissive_hex(s)?[..]
         .try_into()
         .context("message for signing must be exactly 32 bytes long")
-}
-
-fn ether(s: &str) -> Result<U256> {
-    parse_unit(s, 18)
-}
-
-fn gwei(s: &str) -> Result<U256> {
-    parse_unit(s, 9)
-}
-
-fn parse_unit(s: &str, decimals: u8) -> Result<U256> {
-    if let Some(hex) = s.strip_prefix("0x") {
-        Ok(U256::from_str_radix(hex, 16)?)
-    } else {
-        let radix = U256::new(10).pow(decimals as _);
-        let (n, frac) = match s.find('.') {
-            Some(i) => {
-                let (n, frac) = s.split_at(i);
-                let frac = {
-                    let digits = &frac[1..];
-                    let offset = decimals
-                        .checked_sub(digits.len().try_into()?)
-                        .ok_or_else(|| anyhow!("fractional part too long"))?;
-                    digits.parse::<U256>()? * U256::new(10).pow(offset as _)
-                };
-
-                (n.parse::<U256>()?, frac)
-            }
-            None => (s.parse::<U256>()?, U256::ZERO),
-        };
-
-        Ok(n.checked_mul(radix)
-            .and_then(|n| n.checked_add(frac))
-            .ok_or_else(|| anyhow!("Ξ value too high"))?)
-    }
-}
-
-fn gas(s: &str) -> Result<U256> {
-    let (n, radix) = match s.as_bytes().last().map(u8::to_ascii_lowercase) {
-        Some(b'm') => (&s[..s.len() - 1], 1_000_000),
-        Some(b'k') => (&s[..s.len() - 1], 1_000),
-        _ => (s, 1),
-    };
-
-    n.parse::<U256>()?
-        .checked_mul(U256::new(radix))
-        .ok_or_else(|| anyhow!("gas limit too high"))
 }

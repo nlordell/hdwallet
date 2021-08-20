@@ -1,111 +1,70 @@
 //! Module defining Ethereum transaction data as well as an RLP encoding
 //! implementation.
 
-use crate::{
-    account::{Address, Signature},
-    hash,
+pub mod accesslist;
+mod eip1559;
+mod eip2930;
+mod legacy;
+mod rlp;
+
+pub use self::{
+    eip1559::Eip1559Transaction, eip2930::Eip2930Transaction, legacy::LegacyTransaction,
 };
-use ethnum::U256;
+use crate::{account::Signature, hash};
+use serde::{
+    de::{self, Deserializer},
+    Deserialize,
+};
+use serde_json::Map as JsonObject;
 
 /// An Ethereum transaction.
 #[derive(Clone, Debug)]
-pub struct Transaction {
-    /// The nonce for the transaction.
-    pub nonce: U256,
-    /// The gas price in Wei for the transaction.
-    pub gas_price: U256,
-    /// The gas limit for the transaction.
-    pub gas: U256,
-    /// The target address for the transaction. This can also be `None` to
-    /// indicate a contract creation transaction.
-    pub to: Option<Address>,
-    /// The amount of Ether to send with the transaction.
-    pub value: U256,
-    /// The calldata to use for the transaction.
-    pub data: Vec<u8>,
+pub enum Transaction {
+    Legacy(LegacyTransaction),
+    Eip2930(Eip2930Transaction),
+    Eip1559(Eip1559Transaction),
 }
 
 impl Transaction {
     /// Returns the RLP encoded transaction with an optional signature.
-    pub fn encode(&self, chain_id: U256, signature: Option<Signature>) -> Vec<u8> {
-        // NOTE: This is currently not at all optimal in terms of memory
-        // allocations, but we don't really care.
-        let (v, r, s) = signature.map_or((chain_id, U256::ZERO, U256::ZERO), |signature| {
-            (
-                signature.v_replay_protected(chain_id),
-                U256::from_be_bytes(signature.r),
-                U256::from_be_bytes(signature.s),
-            )
-        });
-
-        rlp::list(&[
-            &rlp::uint(self.nonce)[..],
-            &rlp::uint(self.gas_price),
-            &rlp::uint(self.gas),
-            &self
-                .to
-                .map_or_else(|| rlp::bytes(b""), |to| rlp::bytes(&*to)),
-            &rlp::uint(self.value),
-            &rlp::bytes(&self.data),
-            &rlp::uint(v),
-            &rlp::uint(r),
-            &rlp::uint(s),
-        ])
+    pub fn signing_message(&self) -> [u8; 32] {
+        hash::keccak256(self.rlp_encode(None))
     }
 
     /// Returns the 32-byte message used for signing.
-    pub fn signing_message(&self, chain_id: U256) -> [u8; 32] {
-        hash::keccak256(self.encode(chain_id, None))
+    pub fn encode(&self, signature: Signature) -> Vec<u8> {
+        self.rlp_encode(Some(signature))
+    }
+
+    /// Returns the RLP encoded transaction with an optional signature.
+    fn rlp_encode(&self, signature: Option<Signature>) -> Vec<u8> {
+        match self {
+            Transaction::Legacy(tx) => tx.rlp_encode(signature),
+            Transaction::Eip2930(tx) => tx.rlp_encode(signature),
+            Transaction::Eip1559(tx) => tx.rlp_encode(signature),
+        }
     }
 }
 
-/// Tiny RLP encoding implementation.
-mod rlp {
-    use ethnum::U256;
-
-    /// RLP encode some bytes.
-    pub fn bytes(bytes: &[u8]) -> Vec<u8> {
-        match bytes {
-            [x] if *x < 0x80 => vec![*x],
-            _ => {
-                let mut buf = len(bytes.len(), 0x80);
-                buf.extend_from_slice(bytes);
-                buf
-            }
-        }
-    }
-
-    /// RLP encode a list.
-    pub fn list(items: &[&[u8]]) -> Vec<u8> {
-        let total_len = items.iter().map(|item| item.len()).sum();
-        let mut buf = len(total_len, 0xc0);
-        for item in items {
-            buf.extend_from_slice(item);
-        }
-        buf
-    }
-
-    /// RLP encode a length.
-    pub fn len(len: usize, offset: u8) -> Vec<u8> {
-        if len < 56 {
-            vec![len as u8 + offset]
+impl<'de> Deserialize<'de> for Transaction {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let json = JsonObject::deserialize(deserializer)?;
+        if json.contains_key("maxPriorityFeePerGas") || json.contains_key("maxFeePerGas") {
+            Ok(Transaction::Eip1559(
+                serde_json::from_value(json.into()).map_err(de::Error::custom)?,
+            ))
+        } else if json.contains_key("accessList") {
+            Ok(Transaction::Eip2930(
+                serde_json::from_value(json.into()).map_err(de::Error::custom)?,
+            ))
         } else {
-            let bl_buf = len.to_be_bytes();
-            let bl = {
-                let start = len.leading_zeros() / 8;
-                &bl_buf[start as usize..]
-            };
-            let mut buf = vec![bl.len() as u8 + offset + 55];
-            buf.extend_from_slice(bl);
-            buf
+            Ok(Transaction::Legacy(
+                serde_json::from_value(json.into()).map_err(de::Error::custom)?,
+            ))
         }
-    }
-
-    /// RLP encode a unsigned integer. This ensures that it is shortned to its
-    /// shortest little endian byte representation.
-    pub fn uint(value: U256) -> Vec<u8> {
-        let start = value.leading_zeros() / 8;
-        bytes(&value.to_be_bytes()[start as usize..])
     }
 }
 
@@ -114,44 +73,85 @@ mod tests {
     use super::*;
     use crate::{account::PrivateKey, ganache::DETERMINISTIC_PRIVATE_KEY};
     use hex_literal::hex;
+    use serde_json::{json, Value};
 
-    const CHAIN_ID: U256 = U256::new(0x1337);
-
-    fn transaction() -> Transaction {
-        Transaction {
-            nonce: U256::new(7777),
-            gas_price: U256::new(100_000_000_000),
-            gas: U256::new(150_000),
-            to: Some(Address(hex!("7070707070707070707070707070707070707070"))),
-            value: U256::new(42_000_000_000_000_000_000),
-            data: hex!("01020304").into(),
-        }
-    }
-
-    #[test]
-    fn rlp_encode_for_signing() {
-        assert_eq!(
-            transaction().encode(CHAIN_ID, None),
-            hex!(
-                "f6821e6185174876e800830249f0947070707070707070707070707070707070
-                 707070890246ddf9797668000084010203048213378080"
-            ),
-        )
-    }
-
-    #[test]
-    fn rlp_encode_with_signature() {
+    fn sign_encode(tx: Value) -> Vec<u8> {
+        let tx = serde_json::from_value::<Transaction>(tx).unwrap();
         let key = PrivateKey::new(DETERMINISTIC_PRIVATE_KEY).unwrap();
-        let signature = key.sign(transaction().signing_message(CHAIN_ID));
+        let signature = key.sign(tx.signing_message());
+        tx.encode(signature)
+    }
 
+    #[test]
+    fn encode_signed_transaction() {
         assert_eq!(
-            transaction().encode(CHAIN_ID, Some(signature)),
+            sign_encode(json!({
+                "nonce": 0,
+                "gasPrice": 0,
+                "gasLimit": 21000,
+                "to": "0x0000000000000000000000000000000000000000",
+                "value": 0,
+                "data": "0x",
+            })),
             hex!(
-                "f876821e6185174876e800830249f09470707070707070707070707070707070
-                 70707070890246ddf979766800008401020304822691a076382953503398303f
-                 e8c3e3d235e8f71adc39fb90fcda99514e324d96bad253a044351903896d0b6f
-                 8a3ee9543c1e23ec3bab29a4ae5cae1a6b7b2c811105264f"
+                "f85f808082520894000000000000000000000000000000000000000080801ca0
+                 0f1c0e95b7050ac3df5ac3b69a7d41e0b815da462fcd30954b1c37b58ca71c16
+                 a068dab467ad79359967a3df1bcfc17292a3839288d05274d0e3e391f8b50841
+                 0b"
             ),
-        )
+        );
+        assert_eq!(
+            sign_encode(json!({
+                "chainId": 1,
+                "nonce": 0,
+                "gasPrice": 0,
+                "gasLimit": 21000,
+                "to": "0x0000000000000000000000000000000000000000",
+                "value": 0,
+                "data": "0x",
+            })),
+            hex!(
+                "f85f8080825208940000000000000000000000000000000000000000808025a0
+                 c97442e361bf3940bec722b240c699de22302469756436bbcc5a150a93309b08
+                 a02fd3e68ed327dea3d085ec16a8589ebf7871e5a990669f67be82a70cd9dfb4
+                 f7"
+            ),
+        );
+        assert_eq!(
+            sign_encode(json!({
+                "chainId": 1,
+                "nonce": 0,
+                "gasPrice": 0,
+                "gasLimit": 21000,
+                "to": "0x0000000000000000000000000000000000000000",
+                "value": 0,
+                "data": "0x",
+                "accessList": [],
+            })),
+            hex!(
+                "01f8610180808252089400000000000000000000000000000000000000008080
+                 c080a04366d11301b0a233d0f311f93083583ed316c2ebd7246ccd93f1a320b2
+                 57fd65a02e3df28ccda84b829403a04f2d142416f01bdf7036dba12b66e4add6
+                 4d59455e"
+            ),
+        );
+        assert_eq!(
+            sign_encode(json!({
+                "chainId": 1,
+                "nonce": 0,
+                "maxPriorityFeePerGas": 0,
+                "maxFeePerGas": 0,
+                "gasLimit": 21000,
+                "to": "0x0000000000000000000000000000000000000000",
+                "value": 0,
+                "data": "0x",
+            })),
+            hex!(
+                "02f8620180808082520894000000000000000000000000000000000000000080
+                 80c001a0290dbdecbc884b4cb827015fe0cd7ac90df1a5634d52a2845c21afac
+                 ca14b803a03e848dd1a342e5528beff99c42876cf091a68e2090dbbced5a5f7f
+                 392d3abcda"
+            ),
+        );
     }
 }

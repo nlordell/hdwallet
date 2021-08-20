@@ -1,5 +1,6 @@
-use crate::hash;
+use crate::{hash, serialization};
 use hex::FromHexError;
+use serde::Deserialize;
 use std::{
     fmt::{self, Debug, Display, Formatter},
     ops::{Deref, DerefMut},
@@ -7,8 +8,9 @@ use std::{
 };
 
 /// An Ethereum public address.
-#[derive(Copy, Clone, Default, Eq, PartialEq)]
-pub struct Address(pub [u8; 20]);
+#[derive(Copy, Clone, Default, Deserialize, Eq, Ord, PartialEq, PartialOrd)]
+#[serde(transparent)]
+pub struct Address(#[serde(with = "serialization::bytearray")] pub [u8; 20]);
 
 impl Address {
     /// Creates an address from a slice.
@@ -101,6 +103,7 @@ impl FromStr for Address {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
 
     #[test]
     fn checksum_address() {
@@ -111,5 +114,21 @@ mod tests {
             let address = s.parse::<Address>().unwrap();
             assert_eq!(address.to_string(), *s);
         }
+    }
+
+    #[test]
+    fn deserialize_address() {
+        assert_eq!(
+            serde_json::from_value::<Address>(json!("0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"))
+                .unwrap(),
+            Address([0xee; 20]),
+        )
+    }
+
+    #[test]
+    fn deserialize_address_requires_0x_prefix() {
+        let without_prefix = "EeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
+        assert!(without_prefix.parse::<Address>().is_ok());
+        assert!(serde_json::from_value::<Address>(json!(without_prefix)).is_err());
     }
 }
