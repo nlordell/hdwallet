@@ -94,7 +94,7 @@ impl Mnemonic {
 
             let checksum_mask = (1 << bit_offset) - 1;
             ensure!(
-                hash[0] >> (8 - bit_offset) == (acc & checksum_mask) as _,
+                hash[0] >> (8 - bit_offset) == (acc & checksum_mask) as u8,
                 "mnemonic checksum verification failure",
             );
 

@@ -1,23 +1,29 @@
 //! Module containing signature data model.
 
-use ethnum::U256;
+use ethnum::{AsU256, U256};
 use std::fmt::{self, Display, Formatter};
 
-/// Signature Y-parity value.
+/// The parity of the y-value of a secp256k1 signature.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(u8)]
-pub enum Parity {
+pub enum YParity {
     /// Even parity.
     Even = 0,
     /// Odd parity.
     Odd = 1,
 }
 
+impl AsU256 for YParity {
+    fn as_u256(self) -> U256 {
+        U256::new(self as _)
+    }
+}
+
 /// A secp256k1 signature.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Signature {
     /// Signature V value in Electrum notation.
-    pub y_parity: Parity,
+    pub y_parity: YParity,
     /// Signature R value.
     pub r: [u8; 32],
     /// Signature S value.
@@ -32,7 +38,7 @@ impl Signature {
 
     /// Returns the signature's V value with EIP-155 chain replay protection.
     pub fn v_replay_protected(&self, chain_id: U256) -> U256 {
-        U256::new(self.y_parity as _) + chain_id * 2 + 35
+        self.y_parity.as_u256() + chain_id * 2 + 35
     }
 }
 
@@ -55,7 +61,7 @@ mod tests {
     #[test]
     fn replay_protection() {
         let signature = Signature {
-            y_parity: Parity::Even,
+            y_parity: YParity::Even,
             r: [1; 32],
             s: [2; 32],
         };
@@ -65,7 +71,7 @@ mod tests {
     #[test]
     fn signature_to_string() {
         let signature = Signature {
-            y_parity: Parity::Even,
+            y_parity: YParity::Even,
             r: [1; 32],
             s: [2; 32],
         };
