@@ -1,7 +1,8 @@
 //! Module implementing the `hash` subcommand for `keccak256` hashing data.
 
-use crate::{cmd, hash};
+use crate::cmd;
 use anyhow::Result;
+use hdwallet::hash;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
