@@ -9,8 +9,9 @@ pub use self::{
 };
 use crate::hash;
 use anyhow::Result;
+pub use secp256k1::PublicKey;
 use secp256k1::{
-    key::{PublicKey, SecretKey, ONE_KEY},
+    key::{SecretKey, ONE_KEY},
     Message, Secp256k1,
 };
 use std::{

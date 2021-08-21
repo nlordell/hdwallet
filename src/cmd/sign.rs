@@ -1,11 +1,11 @@
 //! Module implementing the `sign` subcommand for generating ECDSA signatures.
 
-use crate::{
-    cmd::{self, AccountOptions},
+use crate::cmd::{self, AccountOptions};
+use anyhow::{ensure, Context as _, Result};
+use hdwallet::{
     hash,
     transaction::{LegacyTransaction, Transaction},
 };
-use anyhow::{ensure, Context as _, Result};
 use std::{convert::TryInto, path::PathBuf};
 use structopt::StructOpt;
 

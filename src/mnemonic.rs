@@ -59,6 +59,10 @@ impl Mnemonic {
 
     /// Parses a mnemonic from a phrase.
     pub fn from_phrase(mnemonic: impl AsRef<str>) -> Result<Self> {
+        Self::from_phrase_str(mnemonic.as_ref())
+    }
+
+    fn from_phrase_str(mnemonic: &str) -> Result<Self> {
         let (language, words) = Language::split(mnemonic.as_ref())?;
 
         let len = mnemonic_to_byte_length(words.len())?;

@@ -17,6 +17,10 @@ const HARDENED: u32 = 0x8000_0000;
 
 /// Creates a new extended private key from a seed.
 pub fn derive(seed: impl AsRef<[u8]>, path: &Path) -> Result<PrivateKey> {
+    derive_slice(seed.as_ref(), path)
+}
+
+fn derive_slice(seed: &[u8], path: &Path) -> Result<PrivateKey> {
     let mut extended_key = {
         let mut hmac = Hmac::<Sha512>::new_from_slice(b"Bitcoin seed")?;
         hmac.update(seed.as_ref());

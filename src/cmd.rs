@@ -8,8 +8,8 @@ pub mod new;
 pub mod public_key;
 pub mod sign;
 
-use crate::{account::PrivateKey, hdk, mnemonic::Mnemonic};
 use anyhow::Result;
+use hdwallet::{account::PrivateKey, hdk, mnemonic::Mnemonic};
 use std::{
     fs,
     io::{self, Read as _},

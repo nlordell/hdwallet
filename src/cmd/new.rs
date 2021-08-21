@@ -1,8 +1,8 @@
 //! Module implementing the `new` subcommand for generating a mnemonic for a new
 //! hierarchical deterministic wallet.
 
-use crate::mnemonic::{Language, Mnemonic};
 use anyhow::Result;
+use hdwallet::mnemonic::{Language, Mnemonic};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
