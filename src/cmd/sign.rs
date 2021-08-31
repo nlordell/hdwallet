@@ -5,6 +5,7 @@ use anyhow::{ensure, Context as _, Result};
 use hdwallet::{
     hash,
     transaction::{LegacyTransaction, Transaction},
+    typeddata::TypedData,
 };
 use std::{convert::TryInto, path::PathBuf};
 use structopt::StructOpt;
@@ -12,18 +13,19 @@ use structopt::StructOpt;
 #[derive(Debug, StructOpt)]
 pub struct Options {
     #[structopt(subcommand)]
-    data: Data,
+    input: Input,
 
     #[structopt(flatten)]
     account: AccountOptions,
 }
 
 #[derive(Debug, StructOpt)]
-enum Data {
+#[structopt(rename_all = "lowercase")]
+enum Input {
     /// Sign an Ethereum transaction.
     Transaction {
         /// Path to transaction to sign in JSON format.
-        #[structopt(name = "MESSAGE")]
+        #[structopt(name = "TRANSACTION")]
         transaction: PathBuf,
 
         /// Only output the transaction signature instead of the RLP-encoded
@@ -46,6 +48,13 @@ enum Data {
         message: PathBuf,
     },
 
+    /// Sign EIP-712 typed data.
+    TypedData {
+        /// Path to the EIP-712 typed data in JSON format.
+        #[structopt(name = "TYPEDDATA")]
+        typed_data: PathBuf,
+    },
+
     /// Sign a raw data.
     Raw {
         /// The 32 byte message to sign specified as a hexadecimal string.
@@ -56,8 +65,8 @@ enum Data {
 
 pub fn run(options: Options) -> Result<()> {
     let account = options.account.private_key()?;
-    match options.data {
-        Data::Transaction {
+    match options.input {
+        Input::Transaction {
             transaction,
             signature_only,
             allow_missing_relay_protection,
@@ -78,7 +87,7 @@ pub fn run(options: Options) -> Result<()> {
                 println!("0x{}", hex::encode(transaction.encode(signature)));
             }
         }
-        Data::Message { message } => {
+        Input::Message { message } => {
             let bytes = cmd::read_input(&message)?;
             let message = hash::keccak256({
                 let mut buffer = Vec::with_capacity(46 + bytes.len());
@@ -89,7 +98,12 @@ pub fn run(options: Options) -> Result<()> {
             });
             println!("{}", account.sign(message));
         }
-        Data::Raw { message } => {
+        Input::TypedData { typed_data } => {
+            let bytes = cmd::read_input(&typed_data)?;
+            let typed_data = serde_json::from_slice::<TypedData>(&bytes)?;
+            println!("{}", account.sign(typed_data.digest()));
+        }
+        Input::Raw { message } => {
             println!("{}", account.sign(message));
         }
     }

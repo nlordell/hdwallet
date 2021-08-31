@@ -1,5 +1,10 @@
 //! Module with JSON serialization helpers.
 
+use serde_json::{Map, Value};
+
+/// A JSON object.
+pub type JsonObject = Map<String, Value>;
+
 /// `U256` serialization methods.
 pub mod u256 {
     use ethnum::{AsU256 as _, U256};

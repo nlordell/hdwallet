@@ -63,7 +63,7 @@ impl Mnemonic {
     }
 
     fn from_phrase_str(mnemonic: &str) -> Result<Self> {
-        let (language, words) = Language::split(mnemonic.as_ref())?;
+        let (language, words) = Language::split(mnemonic)?;
 
         let len = mnemonic_to_byte_length(words.len())?;
         let buf = {

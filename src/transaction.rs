@@ -10,12 +10,11 @@ mod rlp;
 pub use self::{
     eip1559::Eip1559Transaction, eip2930::Eip2930Transaction, legacy::LegacyTransaction,
 };
-use crate::{account::Signature, hash};
+use crate::{account::Signature, hash, serialization::JsonObject};
 use serde::{
     de::{self, Deserializer},
     Deserialize,
 };
-use serde_json::Map as JsonObject;
 
 /// An Ethereum transaction.
 #[derive(Clone, Debug)]
