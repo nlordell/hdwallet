@@ -130,6 +130,7 @@ dependencies = [
  "hex",
  "hex-literal",
  "hmac",
+ "maplit",
  "pbkdf2",
  "secp256k1",
  "serde",
@@ -203,6 +204,12 @@ name = "libc"
 version = "0.2.99"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a7f823d141fe0a24df1e23b4af4e3c7ba9e5966ec514ea068c93024aa7deb765"
+
+[[package]]
+name = "maplit"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3e2e65a1a2e43cfcb47a895c4c8b10d1f4a61097f9f254f183aee60cad9c651d"
 
 [[package]]
 name = "opaque-debug"
