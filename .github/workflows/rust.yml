@@ -12,7 +12,6 @@ env:
 jobs:
   check:
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v2
     - name: Lint
@@ -22,3 +21,14 @@ jobs:
     - name: Test
       run: |
         cargo test
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build
+      run: |
+        curl -sL https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-12/wasi-sdk_12.0_amd64.deb -o /tmp/wasi-sdk.deb
+        sudo dpkg -i /tmp/wasi-sdk.deb
+        rustup target add wasm32-wasi
+        CC=/opt/wasi-sdk/bin/clang cargo build --target wasm32-wasi

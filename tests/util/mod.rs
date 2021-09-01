@@ -44,16 +44,20 @@ impl Hdwallet {
             self.command.stdin(Stdio::piped());
         }
 
-        let mut process = self.command.spawn().map_err(|err| err.to_string())?;
+        let mut process = self.command.spawn().unwrap();
 
-        if let Some(data) = self.stdin {
+        let input = self.stdin.map(|data| {
             let mut stdin = process.stdin.take().unwrap();
             thread::spawn(move || {
                 stdin.write_all(&data).unwrap();
-            });
+            })
+        });
+
+        let output = process.wait_with_output().unwrap();
+        if let Some(input) = input {
+            input.join().unwrap();
         }
 
-        let output = process.wait_with_output().map_err(|err| err.to_string())?;
         if output.status.success() {
             Ok(string_from_utf8(output.stdout))
         } else {
