@@ -22,7 +22,7 @@ jobs:
         sudo apt-get update && sudo apt-get install binaryen wabt
         wasm2wat target/wasm32-wasi/release/hdwallet.wasm | grep -v '^\s*(export "rustsecp256k1_' > target/wasm32-wasi/release/hdwallet.exp.wat
         wat2wasm target/wasm32-wasi/release/hdwallet.exp.wat -o target/wasm32-wasi/release/hdwallet.exp.wasm
-        wasm-opt target/wasm32-wasi/release/hdwallet.exp.wasm -O4 -o target/wasm32-wasi/release/hdwallet.opt.wasm --strip-debug
+        wasm-opt target/wasm32-wasi/release/hdwallet.exp.wasm -O4 -o target/wasm32-wasi/release/hdwallet.opt.wasm --strip-debug --strip-producers
 
     - name: Release
       id: create_release

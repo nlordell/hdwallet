@@ -176,6 +176,12 @@ impl Types {
                 let bytes = serialization::bytes::deserialize(value)?;
                 match n {
                     Some(n) => {
+                        ensure!(
+                            *n == bytes.len() as u32,
+                            "expected byte array of length {} but got {}",
+                            n,
+                            bytes.len()
+                        );
                         let mut buffer = [0_u8; 32];
                         buffer
                             .get_mut(..(*n as usize))
@@ -187,7 +193,6 @@ impl Types {
                 }
             }
             MemberKind::Uint(n) => {
-                // TODO(nlordell): Actual signed integer support.
                 let value = serialization::u256::deserialize(value)?;
                 ensure!(
                     value.leading_zeros() + n >= 256,
@@ -197,6 +202,7 @@ impl Types {
                 );
                 value.to_be_bytes()
             }
+            MemberKind::Int(_) => todo!("int"),
             MemberKind::Bool => match bool::deserialize(value)? {
                 true => U256::ONE,
                 false => U256::ZERO,
@@ -216,8 +222,25 @@ impl Types {
                 };
                 self.struct_hash(inner, value)?
             }
-            _ => {
-                todo!()
+            MemberKind::Array(inner, size) => {
+                let value = match value {
+                    Value::Array(value) => value,
+                    value => bail!("expected JSON array but got '{}'", value),
+                };
+                if let Some(size) = size {
+                    ensure!(
+                        value.len() == *size,
+                        "expected fixed array of size {} but got {}",
+                        size,
+                        value.len(),
+                    );
+                }
+
+                let mut buffer = vec![0_u8; 32 * value.len()];
+                for (i, element) in value.into_iter().enumerate() {
+                    buffer[(i * 32)..][..32].copy_from_slice(&self.encode_value(&*inner, element)?);
+                }
+                hash::keccak256(&buffer)
             }
         })
     }
@@ -350,6 +373,7 @@ mod tests {
     use super::*;
     use hex_literal::hex;
     use maplit::hashmap;
+    use serde_json::json;
 
     #[test]
     fn typed_data_digest() {
@@ -396,6 +420,129 @@ mod tests {
         assert_eq!(
             typed_data.digest(),
             hex!("be609aee343fb3c4b28e1df9e632fca64fcfaede20f02e86244efddf30957bd2"),
+        );
+    }
+
+    #[test]
+    fn deeply_nested_all_types_without_int() {
+        let typed_data = serde_json::from_str::<TypedData>(
+            r#"{
+                "types": {
+                    "EIP712Domain": [
+                        { "name": "name", "type": "string" }
+                    ],
+                    "Foo": [
+                        { "name": "bytes", "type": "bytes" },
+                        { "name": "bytes4", "type": "bytes4" },
+                        { "name": "uint96", "type": "uint96" },
+                        { "name": "bool", "type": "bool" },
+                        { "name": "address", "type": "address" },
+                        { "name": "string", "type": "string" },
+                        { "name": "nested", "type": "Bar[]" }
+                    ],
+                    "Bar": [
+                        { "name": "inner", "type": "Baz[2]" }
+                    ],
+                    "Baz": [
+                        { "name": "value", "type": "uint256" }
+                    ]
+                },
+                "primaryType": "Foo",
+                "domain": {
+                    "name": "Test"
+                },
+                "message": {
+                    "bytes": "0x010203",
+                    "bytes4": "0x11223344",
+                    "uint96": "42",
+                    "bool": true,
+                    "address": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+                    "string": "hello hdwallet",
+                    "nested": [
+                        {
+                            "inner": [
+                                { "value": 2 },
+                                { "value": 3 }
+                            ]
+                        },
+                        {
+                            "inner": [
+                                { "value": 4 },
+                                { "value": 5 }
+                            ]
+                        }
+                    ]
+                }
+            }"#,
+        )
+        .unwrap();
+        assert_eq!(
+            typed_data.digest(),
+            hex!("abb8645e0bd6fcaceb11634c67729a125a7e3cfcc35ee7dec5b003cc83b14d49"),
+        );
+    }
+
+    #[test]
+    #[should_panic]
+    fn deeply_nested_all_types() {
+        // TODO(nlordell): Oncw integer support is implemented, we can remove
+        // the `deeply_nested_all_types_without_int` test in favour of this one.
+        let typed_data = serde_json::from_str::<TypedData>(
+            r#"{
+                "types": {
+                    "EIP712Domain": [
+                        { "name": "name", "type": "string" }
+                    ],
+                    "Foo": [
+                        { "name": "bytes", "type": "bytes" },
+                        { "name": "bytes4", "type": "bytes4" },
+                        { "name": "uint96", "type": "uint96" },
+                        { "name": "int32", "type": "int32" },
+                        { "name": "bool", "type": "bool" },
+                        { "name": "address", "type": "address" },
+                        { "name": "string", "type": "string" },
+                        { "name": "nested", "type": "Bar[]" }
+                    ],
+                    "Bar": [
+                        { "name": "inner", "type": "Baz[2]" }
+                    ],
+                    "Baz": [
+                        { "name": "value", "type": "uint256" }
+                    ]
+                },
+                "primaryType": "Foo",
+                "domain": {
+                    "name": "Test"
+                },
+                "message": {
+                    "bytes": "0x010203",
+                    "bytes4": "0x11223344",
+                    "uint96": "42",
+                    "int32": "-1337",
+                    "bool": true,
+                    "address": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+                    "string": "hello hdwallet",
+                    "nested": [
+                        {
+                            "inner": [
+                                { "value": 2 },
+                                { "value": 3 }
+                            ]
+                        },
+                        {
+                            "inner": [
+                                { "value": 4 },
+                                { "value": 5 }
+                            ]
+                        }
+                    ]
+                }
+            }"#,
+        )
+        .unwrap();
+        assert_eq!(
+            typed_data.digest(),
+            hex!("a150d6fdc3fe189531a29808ccdd2808005c24274de09187af619f69377221a1"),
         );
     }
 
@@ -549,5 +696,111 @@ mod tests {
         ] {
             assert_eq!(type_definition.to_string(), formatted);
         }
+    }
+
+    #[test]
+    fn invalid_domain_type() {
+        fn verify_domain_type(s: &str) -> Result<()> {
+            serde_json::from_str::<TypedDataBlob>(&format!(
+                r#"{{
+                    "types": {{ "EIP712Domain": {} }},
+                    "primaryType": "",
+                    "domain": {{}},
+                    "message": {{}}
+                }}"#,
+                s,
+            ))
+            .unwrap()
+            .verify_domain_type()
+        }
+
+        assert!(verify_domain_type(r#"[]"#).is_err(), "empty domain");
+
+        assert!(
+            verify_domain_type(
+                r#"[
+                    { "name": "name", "type": "bytes" }
+                ]"#,
+            )
+            .is_err(),
+            "incorrect field type",
+        );
+
+        assert!(
+            verify_domain_type(
+                r#"[
+                    { "name": "description", "type": "string" }
+                ]"#,
+            )
+            .is_err(),
+            "unknown field",
+        );
+
+        assert!(
+            verify_domain_type(
+                r#"[
+                    { "name": "version", "type": "string" },
+                    { "name": "name", "type": "string" }
+                ]"#,
+            )
+            .is_err(),
+            "out of order",
+        );
+    }
+
+    #[test]
+    fn encode_value_error() {
+        let types = serde_json::from_str::<Types>(
+            r#"{ "Struct": [{ "name": "value", "type": "uint256" }] }"#,
+        )
+        .unwrap();
+
+        assert!(types
+            .encode_value(&MemberKind::Bytes(None), json!(true))
+            .is_err());
+        assert!(types
+            .encode_value(&MemberKind::Bytes(Some(1)), json!(true))
+            .is_err());
+        assert!(types
+            .encode_value(&MemberKind::Bytes(Some(1)), json!("0x0102"))
+            .is_err());
+        assert!(types
+            .encode_value(
+                &MemberKind::Bytes(Some(33)),
+                json!(
+                    "0x00000000000000000000\
+                       00000000000000000000\
+                       00000000000000000000\
+                       000000"
+                )
+            )
+            .is_err());
+        assert!(types
+            .encode_value(&MemberKind::Uint(8), json!(true))
+            .is_err());
+        assert!(types
+            .encode_value(&MemberKind::Uint(8), json!(1337))
+            .is_err());
+        assert!(types
+            .encode_value(&MemberKind::Bool, json!("not a bool"))
+            .is_err());
+        assert!(types
+            .encode_value(&MemberKind::Address, json!(true))
+            .is_err());
+        assert!(types
+            .encode_value(&MemberKind::String, json!(true))
+            .is_err());
+        assert!(types
+            .encode_value(
+                &MemberKind::Struct("Struct".to_string()),
+                json!({"invalid": "field"})
+            )
+            .is_err());
+        assert!(types
+            .encode_value(
+                &MemberKind::Struct("Struct".to_string()),
+                json!({ "value": 1, "extra": "field" })
+            )
+            .is_err());
     }
 }
