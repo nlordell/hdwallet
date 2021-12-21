@@ -5,7 +5,7 @@ mod path;
 pub use self::path::{Component, Path};
 use crate::account::PrivateKey;
 use anyhow::{Context as _, Result};
-use hmac::{Hmac, Mac as _, NewMac as _};
+use hmac::{Hmac, Mac as _};
 use secp256k1::{
     key::{PublicKey, SecretKey},
     Secp256k1, Signing,
