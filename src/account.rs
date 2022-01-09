@@ -10,10 +10,7 @@ pub use self::{
 use crate::hash;
 use anyhow::Result;
 pub use secp256k1::PublicKey;
-use secp256k1::{
-    key::{SecretKey, ONE_KEY},
-    Message, Secp256k1,
-};
+use secp256k1::{Message, Secp256k1, SecretKey, ONE_KEY};
 use std::{
     convert::TryInto,
     fmt::{self, Debug, Formatter},
@@ -59,7 +56,7 @@ impl PrivateKey {
         let message = Message::from_slice(&message).expect("invalid message");
 
         let (recovery_id, raw_signature) = Secp256k1::signing_only()
-            .sign_recoverable(&message, &self.0)
+            .sign_ecdsa_recoverable(&message, &self.0)
             .serialize_compact();
         debug_assert!(matches!(recovery_id.to_i32(), 0 | 1));
         debug_assert_eq!(raw_signature.len(), 64);

@@ -6,10 +6,7 @@ pub use self::path::{Component, Path};
 use crate::account::PrivateKey;
 use anyhow::{Context as _, Result};
 use hmac::{Hmac, Mac as _};
-use secp256k1::{
-    key::{PublicKey, SecretKey},
-    Secp256k1, Signing,
-};
+use secp256k1::{PublicKey, Secp256k1, SecretKey, Signing};
 use sha2::Sha512;
 
 /// A value indicating a path component is hardened.
