@@ -44,11 +44,10 @@ impl AccountOptions {
     /// Returns the private key for the specified account options.
     pub fn private_key(&self) -> Result<PrivateKey> {
         let seed = self.mnemonic.seed(&self.password);
-        let path = match &self.hd_path {
-            None => format!("m/44'/60'/0'/0/{}", self.account_index).parse(),
-            Some(hd_path) => hd_path.parse(),
-        }?;
-        hdk::derive(seed, &path)
+        match &self.hd_path {
+            None => hdk::derive_index(seed, self.account_index),
+            Some(hd_path) => hdk::derive(seed, &hd_path.parse()?),
+        }
     }
 }
 
