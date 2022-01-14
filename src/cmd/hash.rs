@@ -2,14 +2,14 @@
 
 use crate::cmd;
 use anyhow::Result;
+use clap::Parser;
 use hdwallet::hash;
 use std::path::PathBuf;
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 pub struct Options {
     /// Path to the data to hash. Use `-` for standard in.
-    #[structopt(name = "DATA", default_value = "-")]
+    #[clap(name = "DATA", default_value = "-")]
     data: PathBuf,
 }
 

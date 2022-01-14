@@ -9,34 +9,34 @@ pub mod public_key;
 pub mod sign;
 
 use anyhow::Result;
+use clap::Parser;
 use hdwallet::{account::PrivateKey, hdk, mnemonic::Mnemonic};
 use std::{
     fs,
     io::{self, Read as _},
     path::Path,
 };
-use structopt::StructOpt;
 
 /// Shared account options.
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 struct AccountOptions {
     /// The BIP-0039 mnemonic phrase for seeding the HD wallet.
-    #[structopt(short, long, env)]
+    #[clap(short, long, env, hide_env_values = true)]
     mnemonic: Mnemonic,
 
     /// The password to use with the mnemonic phrase for salting the seed used
     /// for the HD wallet.
-    #[structopt(long, env, default_value)]
+    #[clap(long, env, hide_env_values = true, default_value_t)]
     password: String,
 
     /// The BIP-44 account index for deriving a private from the mnemonic seed
     /// phrase. The derived key will use the path "m/44'/60'/0'/0/{index}".
-    #[structopt(long, env, default_value = "0")]
+    #[clap(long, env, default_value_t = 0)]
     account_index: usize,
 
     /// Manually specified HD path for deriving the account key. This option can
     /// not be used in conjunction with the "--account-index" option.
-    #[structopt(long, env, conflicts_with = "account-index")]
+    #[clap(long, env, conflicts_with = "account-index")]
     hd_path: Option<String>,
 }
 
@@ -58,7 +58,7 @@ fn permissive_hex(s: &str) -> Result<Box<[u8]>> {
     let hex_string = trimmed.strip_prefix("0x").unwrap_or(&trimmed);
     let bytes = ::hex::decode(&hex_string)?;
     // NOTE: Use a boxed slice instead of a `Vec` as the former has special
-    // scemantics with `structopt`.
+    // scemantics with `clap`.
     Ok(bytes.into_boxed_slice())
 }
 

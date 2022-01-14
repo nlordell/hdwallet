@@ -2,40 +2,40 @@
 
 use crate::cmd::{self, AccountOptions};
 use anyhow::{ensure, Context as _, Result};
+use clap::Parser;
 use hdwallet::{
     hash,
     transaction::{LegacyTransaction, Transaction},
     typeddata::TypedData,
 };
 use std::{convert::TryInto, path::PathBuf};
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 pub struct Options {
-    #[structopt(subcommand)]
+    #[clap(subcommand)]
     input: Input,
 
-    #[structopt(flatten)]
+    #[clap(flatten)]
     account: AccountOptions,
 }
 
-#[derive(Debug, StructOpt)]
-#[structopt(rename_all = "lowercase")]
+#[derive(Debug, Parser)]
+#[clap(rename_all = "lowercase")]
 enum Input {
     /// Sign an Ethereum transaction.
     Transaction {
         /// Path to transaction to sign in JSON format.
-        #[structopt(name = "TRANSACTION")]
+        #[clap(name = "TRANSACTION")]
         transaction: PathBuf,
 
         /// Only output the transaction signature instead of the RLP-encoded
         /// signed transaction.
-        #[structopt(long)]
+        #[clap(long)]
         signature_only: bool,
 
         /// Force allowing legacy transactions without a chain ID for relay
         /// protection. Use this care!
-        #[structopt(long)]
+        #[clap(long)]
         allow_missing_relay_protection: bool,
     },
 
@@ -44,21 +44,21 @@ enum Input {
         /// Path to the message to sign in the "eth_sign" scheme. This message
         /// will be prefixed with "\x19Ethereum Signed Message:\n" and its
         /// length before hashing and singing.
-        #[structopt(name = "MESSAGE")]
+        #[clap(name = "MESSAGE")]
         message: PathBuf,
     },
 
     /// Sign EIP-712 typed data.
     TypedData {
         /// Path to the EIP-712 typed data in JSON format.
-        #[structopt(name = "TYPEDDATA")]
+        #[clap(name = "TYPEDDATA")]
         typed_data: PathBuf,
     },
 
     /// Sign a raw data.
     Raw {
         /// The 32 byte message to sign specified as a hexadecimal string.
-        #[structopt(name = "BYTES", parse(try_from_str = permissive_hex_digest))]
+        #[clap(name = "BYTES", parse(try_from_str = permissive_hex_digest))]
         message: [u8; 32],
     },
 }
