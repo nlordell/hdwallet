@@ -6,32 +6,32 @@
 
 use crate::cmd;
 use anyhow::Result;
+use clap::Parser;
 use std::{
     io::{self, Write},
     path::PathBuf,
     str,
 };
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 pub struct Options {
-    #[structopt(subcommand)]
+    #[clap(subcommand)]
     op: Op,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 enum Op {
     /// Encode binary data as a hexadecimal string.
     Encode {
         /// Path to the data to encode. Use `-` for standard in.
-        #[structopt(name = "DATA", default_value = "-")]
+        #[clap(name = "DATA", default_value = "-")]
         data: PathBuf,
     },
 
     /// Decode a hexadecimal string as binary data.
     Decode {
         /// Path to the data to decode. Use `-` for standard in.
-        #[structopt(name = "DATA", default_value = "-")]
+        #[clap(name = "DATA", default_value = "-")]
         data: PathBuf,
     },
 }

@@ -2,17 +2,17 @@
 //! hierarchical deterministic wallet.
 
 use anyhow::Result;
+use clap::Parser;
 use hdwallet::mnemonic::{Language, Mnemonic};
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 pub struct Options {
     /// The number of words for the mnemonic phrase.
-    #[structopt(short = "n", long, default_value = "12")]
+    #[clap(short = 'n', long, default_value_t = 12)]
     length: usize,
 
     /// The language to generate the mnemonic for.
-    #[structopt(short, long, default_value)]
+    #[clap(short, long, default_value_t)]
     language: Language,
 }
 

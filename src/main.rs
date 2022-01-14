@@ -1,33 +1,33 @@
 mod cmd;
 
+use clap::Parser;
 use std::process;
-use structopt::StructOpt;
 
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug, StructOpt)]
-#[structopt(
+#[derive(Debug, Parser)]
+#[clap(
     name = "hdwallet",
     about = "Hierarchical deterministic wallet for Ethereum"
 )]
 enum Options {
-    #[structopt(about = "Print account public address")]
+    #[clap(about = "Print account public address")]
     Address(cmd::address::Options),
-    #[structopt(about = "Export a private key")]
+    #[clap(about = "Export a private key")]
     Export(cmd::export::Options),
-    #[structopt(about = "Keccak256 hash data")]
+    #[clap(about = "Keccak256 hash data")]
     Hash(cmd::hash::Options),
-    #[structopt(about = "Hex encoding and decoding")]
+    #[clap(about = "Hex encoding and decoding")]
     Hex(cmd::hex::Options),
-    #[structopt(about = "Generate a new HD wallet mnemonic")]
+    #[clap(about = "Generate a new HD wallet mnemonic")]
     New(cmd::new::Options),
-    #[structopt(about = "Export the public key for an account")]
+    #[clap(about = "Export the public key for an account")]
     PublicKey(cmd::public_key::Options),
-    #[structopt(about = "Sign a message")]
+    #[clap(about = "Sign a message")]
     Sign(cmd::sign::Options),
 }
 
 fn main() {
-    if let Err(err) = match Options::from_args() {
+    if let Err(err) = match Options::parse() {
         Options::Address(options) => cmd::address::run(options),
         Options::Export(options) => cmd::export::run(options),
         Options::Hash(options) => cmd::hash::run(options),

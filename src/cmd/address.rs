@@ -3,11 +3,11 @@
 
 use crate::cmd::AccountOptions;
 use anyhow::Result;
-use structopt::StructOpt;
+use clap::Parser;
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 pub struct Options {
-    #[structopt(flatten)]
+    #[clap(flatten)]
     account: AccountOptions,
 }
 
