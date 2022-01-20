@@ -4,7 +4,7 @@ use crate::cmd::{self, AccountOptions};
 use anyhow::{ensure, Context as _, Result};
 use clap::Parser;
 use hdwallet::{
-    hash,
+    message::EthereumMessage,
     transaction::{LegacyTransaction, Transaction},
     typeddata::TypedData,
 };
@@ -88,20 +88,12 @@ pub fn run(options: Options) -> Result<()> {
             }
         }
         Input::Message { message } => {
-            let bytes = cmd::read_input(&message)?;
-            let message = hash::keccak256({
-                let mut buffer = Vec::with_capacity(46 + bytes.len());
-                buffer.extend_from_slice(b"\x19Ethereum Signed Message:\n");
-                buffer.extend_from_slice(bytes.len().to_string().as_bytes());
-                buffer.extend_from_slice(&bytes);
-                buffer
-            });
-            println!("{}", account.sign(message));
+            let message = EthereumMessage(cmd::read_input(&message)?);
+            println!("{}", account.sign(message.signing_message()));
         }
         Input::TypedData { typed_data } => {
-            let bytes = cmd::read_input(&typed_data)?;
-            let typed_data = serde_json::from_slice::<TypedData>(&bytes)?;
-            println!("{}", account.sign(typed_data.digest()));
+            let typed_data = serde_json::from_slice::<TypedData>(&cmd::read_input(&typed_data)?)?;
+            println!("{}", account.sign(typed_data.signing_message()));
         }
         Input::Raw { message } => {
             println!("{}", account.sign(message));

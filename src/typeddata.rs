@@ -24,8 +24,10 @@ pub struct TypedData {
 }
 
 impl TypedData {
-    /// Returns the EIP-712 digest of the typed data.
-    pub fn digest(&self) -> [u8; 32] {
+    /// Returns the 32-byte message to be used for siging the typed data.
+    ///
+    /// This is the EIP-712 digest of the typed data.
+    pub fn signing_message(&self) -> [u8; 32] {
         self.digest
     }
 }
@@ -418,7 +420,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(
-            typed_data.digest(),
+            typed_data.signing_message(),
             hex!("be609aee343fb3c4b28e1df9e632fca64fcfaede20f02e86244efddf30957bd2"),
         );
     }
@@ -477,7 +479,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(
-            typed_data.digest(),
+            typed_data.signing_message(),
             hex!("abb8645e0bd6fcaceb11634c67729a125a7e3cfcc35ee7dec5b003cc83b14d49"),
         );
     }
@@ -541,7 +543,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(
-            typed_data.digest(),
+            typed_data.signing_message(),
             hex!("a150d6fdc3fe189531a29808ccdd2808005c24274de09187af619f69377221a1"),
         );
     }

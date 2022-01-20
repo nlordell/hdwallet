@@ -7,6 +7,7 @@
 pub mod account;
 pub mod hash;
 pub mod hdk;
+pub mod message;
 pub mod mnemonic;
 mod rand;
 mod serialization;
