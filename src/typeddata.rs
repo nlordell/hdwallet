@@ -204,7 +204,16 @@ impl Types {
                 );
                 value.to_be_bytes()
             }
-            MemberKind::Int(_) => todo!("int"),
+            MemberKind::Int(n) => {
+                let value = serialization::i256::deserialize(value)?;
+                ensure!(
+                    value.unsigned_abs().leading_zeros() + n >= 256,
+                    "value {:#x} overflows int{}",
+                    value,
+                    n,
+                );
+                value.to_be_bytes()
+            }
             MemberKind::Bool => match bool::deserialize(value)? {
                 true => U256::ONE,
                 false => U256::ZERO,
@@ -426,69 +435,7 @@ mod tests {
     }
 
     #[test]
-    fn deeply_nested_all_types_without_int() {
-        let typed_data = serde_json::from_str::<TypedData>(
-            r#"{
-                "types": {
-                    "EIP712Domain": [
-                        { "name": "name", "type": "string" }
-                    ],
-                    "Foo": [
-                        { "name": "bytes", "type": "bytes" },
-                        { "name": "bytes4", "type": "bytes4" },
-                        { "name": "uint96", "type": "uint96" },
-                        { "name": "bool", "type": "bool" },
-                        { "name": "address", "type": "address" },
-                        { "name": "string", "type": "string" },
-                        { "name": "nested", "type": "Bar[]" }
-                    ],
-                    "Bar": [
-                        { "name": "inner", "type": "Baz[2]" }
-                    ],
-                    "Baz": [
-                        { "name": "value", "type": "uint256" }
-                    ]
-                },
-                "primaryType": "Foo",
-                "domain": {
-                    "name": "Test"
-                },
-                "message": {
-                    "bytes": "0x010203",
-                    "bytes4": "0x11223344",
-                    "uint96": "42",
-                    "bool": true,
-                    "address": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
-                    "string": "hello hdwallet",
-                    "nested": [
-                        {
-                            "inner": [
-                                { "value": 2 },
-                                { "value": 3 }
-                            ]
-                        },
-                        {
-                            "inner": [
-                                { "value": 4 },
-                                { "value": 5 }
-                            ]
-                        }
-                    ]
-                }
-            }"#,
-        )
-        .unwrap();
-        assert_eq!(
-            typed_data.signing_message(),
-            hex!("abb8645e0bd6fcaceb11634c67729a125a7e3cfcc35ee7dec5b003cc83b14d49"),
-        );
-    }
-
-    #[test]
-    #[should_panic]
     fn deeply_nested_all_types() {
-        // TODO(nlordell): Oncw integer support is implemented, we can remove
-        // the `deeply_nested_all_types_without_int` test in favour of this one.
         let typed_data = serde_json::from_str::<TypedData>(
             r#"{
                 "types": {
