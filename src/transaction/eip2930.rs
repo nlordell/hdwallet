@@ -24,9 +24,8 @@ pub struct Eip2930Transaction {
     #[serde(with = "serialization::u256")]
     pub gas_price: U256,
     /// The gas limit for the transaction.
-    #[serde(rename = "gasLimit")]
     #[serde(with = "serialization::u256")]
-    pub gas_limit: U256,
+    pub gas: U256,
     /// The target address for the transaction. This can also be `None` to
     /// indicate a contract creation transaction.
     pub to: Option<Address>,
@@ -48,7 +47,7 @@ impl Eip2930Transaction {
             rlp::uint(self.chain_id),
             rlp::uint(self.nonce),
             rlp::uint(self.gas_price),
-            rlp::uint(self.gas_limit),
+            rlp::uint(self.gas),
             self.to
                 .map_or_else(|| rlp::bytes(b""), |to| rlp::bytes(&*to)),
             rlp::uint(self.value),
@@ -85,7 +84,7 @@ mod tests {
             "chainId": "0xff",
             "nonce": 42,
             "gasPrice": 13.37e9,
-            "gasLimit": 21000,
+            "gas": 21000,
             "value": "13370000000000000000",
             "data": "0x",
             "accessList": [],
@@ -96,7 +95,7 @@ mod tests {
                 chain_id: 255.as_u256(),
                 nonce: 42.as_u256(),
                 gas_price: 13.37e9.as_u256(),
-                gas_limit: 21_000.as_u256(),
+                gas: 21_000.as_u256(),
                 to: None,
                 value: 13.37e18.as_u256(),
                 data: vec![],
@@ -121,7 +120,7 @@ mod tests {
                 chain_id: 1.as_u256(),
                 nonce: 66.as_u256(),
                 gas_price: 42e9.as_u256(),
-                gas_limit: 30_000.as_u256(),
+                gas: 30_000.as_u256(),
                 to: Some(Address(hex!("deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"))),
                 value: 13.37e18.as_u256(),
                 data: vec![],
@@ -139,7 +138,7 @@ mod tests {
                 chain_id: 1.as_u256(),
                 nonce: 777.as_u256(),
                 gas_price: 42e9.as_u256(),
-                gas_limit: 100_000.as_u256(),
+                gas: 100_000.as_u256(),
                 to: None,
                 value: 0.as_u256(),
                 data: hex!(
