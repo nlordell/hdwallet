@@ -1,44 +1,37 @@
 //! Module containing signature data model.
 
-use ethnum::{AsU256, U256};
+use ethnum::{AsU256 as _, U256};
+use k256::ecdsa::recoverable;
 use std::fmt::{self, Display, Formatter};
-
-/// The parity of the y-value of a secp256k1 signature.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[repr(u8)]
-pub enum YParity {
-    /// Even parity.
-    Even = 0,
-    /// Odd parity.
-    Odd = 1,
-}
-
-impl AsU256 for YParity {
-    fn as_u256(self) -> U256 {
-        U256::new(self as _)
-    }
-}
 
 /// A secp256k1 signature.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct Signature {
-    /// Signature V value in Electrum notation.
-    pub y_parity: YParity,
-    /// Signature R value.
-    pub r: [u8; 32],
-    /// Signature S value.
-    pub s: [u8; 32],
-}
+pub struct Signature(pub recoverable::Signature);
 
 impl Signature {
-    /// Returns the signature's V value in Electrum notation.
-    pub fn v(&self) -> u8 {
-        27 + (self.y_parity as u8)
+    /// Returns the y-parity in its 256-bit integer representation.
+    ///
+    /// Return 0 for even parity, and 1 for odd parity.
+    pub fn y_parity(&self) -> U256 {
+        u8::from(self.0.recovery_id()).as_u256()
     }
 
     /// Returns the signature's V value with EIP-155 chain replay protection.
-    pub fn v_replay_protected(&self, chain_id: U256) -> U256 {
-        self.y_parity.as_u256() + chain_id * 2 + 35
+    pub fn v(&self, chain_id: Option<U256>) -> U256 {
+        match chain_id {
+            Some(chain_id) => self.y_parity() + chain_id * 2 + 35,
+            None => self.y_parity() + 27,
+        }
+    }
+
+    /// Returns the signature's 32-byte R-value in big-endian representation.
+    pub fn r(&self) -> U256 {
+        U256::from_be_bytes(self.0.r().to_bytes().into())
+    }
+
+    /// Returns the signature's 32-byte S-value in big-endian representation.
+    pub fn s(&self) -> U256 {
+        U256::from_be_bytes(self.0.s().to_bytes().into())
     }
 }
 
@@ -46,10 +39,10 @@ impl Display for Signature {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(
             f,
-            "0x{}{}{:02x}",
-            hex::encode(&self.r),
-            hex::encode(&self.s),
-            self.v(),
+            "0x{:064x}{:064x}{:02x}",
+            self.r(),
+            self.s(),
+            self.v(None),
         )
     }
 }
@@ -57,24 +50,32 @@ impl Display for Signature {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use k256::ecdsa::{self, recoverable::Id};
+
+    impl Signature {
+        /// Creates a signature from its raw parts.
+        ///
+        /// Convinience method used for testing.
+        pub fn from_parts(y_parity: u8, r: [u8; 32], s: [u8; 32]) -> Self {
+            Self(
+                recoverable::Signature::new(
+                    &ecdsa::Signature::from_scalars(r, s).unwrap(),
+                    Id::new(y_parity).unwrap(),
+                )
+                .unwrap(),
+            )
+        }
+    }
 
     #[test]
     fn replay_protection() {
-        let signature = Signature {
-            y_parity: YParity::Even,
-            r: [1; 32],
-            s: [2; 32],
-        };
-        assert_eq!(signature.v_replay_protected(U256::new(1)), U256::new(37));
+        let signature = Signature::from_parts(0, [1; 32], [2; 32]);
+        assert_eq!(signature.v(Some(U256::new(1))), U256::new(37));
     }
 
     #[test]
     fn signature_to_string() {
-        let signature = Signature {
-            y_parity: YParity::Even,
-            r: [1; 32],
-            s: [2; 32],
-        };
+        let signature = Signature::from_parts(0, [1; 32], [2; 32]);
         assert_eq!(
             signature.to_string(),
             "0x0101010101010101010101010101010101010101010101010101010101010101\

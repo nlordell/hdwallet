@@ -6,7 +6,7 @@ pub use self::path::{Component, Path};
 use crate::account::PrivateKey;
 use anyhow::{Context as _, Result};
 use hmac::{Hmac, Mac as _};
-use secp256k1::{PublicKey, Secp256k1, SecretKey, Signing};
+use k256::{elliptic_curve::sec1::ToEncodedPoint as _, SecretKey};
 use sha2::Sha512;
 
 /// A value indicating a path component is hardened.
@@ -30,48 +30,36 @@ fn derive_slice(seed: &[u8], path: &Path) -> Result<PrivateKey> {
         hmac.finalize().into_bytes()
     };
 
-    let secp = Secp256k1::signing_only();
     for (i, component) in path.components().enumerate() {
         let (secret, chain_code) = extended_key.split_at(32);
+        let secret = SecretKey::from_be_bytes(secret)?;
 
         let mut hmac: Hmac<Sha512> = Hmac::<Sha512>::new_from_slice(chain_code)?;
         let value = match component {
             Component::Hardened(value) => {
                 hmac.update(&[0]);
-                hmac.update(secret);
+                hmac.update(&secret.to_be_bytes());
                 value | HARDENED
             }
             Component::Normal(value) => {
-                hmac.update(&public_key(&secp, secret)?);
+                hmac.update(secret.public_key().to_encoded_point(true).as_bytes());
                 value
             }
         };
         hmac.update(&value.to_be_bytes());
 
         let mut child_key = hmac.finalize().into_bytes();
-        let child_secret = SecretKey::from_slice(&child_key[..32])
-            .and_then(|mut key| {
-                key.add_assign(secret)?;
-                Ok(key)
-            })
-            .with_context(|| {
-                format!("path '{}' component #{} yields invalid child key", path, i)
-            })?;
-        child_key[..32].copy_from_slice(child_secret.as_ref());
+
+        let child_secret = SecretKey::from_be_bytes(&child_key[..32]).with_context(|| {
+            format!("path '{}' component #{} yields invalid child key", path, i)
+        })?;
+        let next_secret = SecretKey::new(*child_secret.as_scalar_core() + *secret.as_scalar_core());
+        child_key[..32].copy_from_slice(&next_secret.to_be_bytes());
 
         extended_key = child_key
     }
 
     PrivateKey::new(&extended_key[..32])
-}
-
-fn public_key<C>(secp: &Secp256k1<C>, secret: &[u8]) -> Result<[u8; 33]>
-where
-    C: Signing,
-{
-    let secret_key = SecretKey::from_slice(secret)?;
-    let public_key = PublicKey::from_secret_key(secp, &secret_key);
-    Ok(public_key.serialize())
 }
 
 #[cfg(test)]

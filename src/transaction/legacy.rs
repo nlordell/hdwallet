@@ -5,7 +5,7 @@ use crate::{
     serialization,
     transaction::rlp,
 };
-use ethnum::{AsU256 as _, U256};
+use ethnum::U256;
 use serde::Deserialize;
 
 /// A Legacy Ethereum transaction.
@@ -48,15 +48,7 @@ impl LegacyTransaction {
         ];
 
         let tail = signature
-            .map(|signature| {
-                (
-                    self.chain_id.map_or(signature.v().as_u256(), |chain_id| {
-                        signature.v_replay_protected(chain_id)
-                    }),
-                    U256::from_be_bytes(signature.r),
-                    U256::from_be_bytes(signature.s),
-                )
-            })
+            .map(|signature| (signature.v(self.chain_id), signature.r(), signature.s()))
             .or_else(|| Some((self.chain_id?, U256::ZERO, U256::ZERO)))
             .map(|(v, r, s)| [rlp::uint(v), rlp::uint(r), rlp::uint(s)]);
 
@@ -67,6 +59,7 @@ impl LegacyTransaction {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ethnum::AsU256 as _;
     use hex_literal::hex;
     use serde_json::json;
 

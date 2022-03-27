@@ -6,7 +6,7 @@ use crate::{
     transaction::accesslist::AccessList,
     transaction::rlp,
 };
-use ethnum::{AsU256 as _, U256};
+use ethnum::U256;
 use serde::Deserialize;
 
 /// An EIP-2930 Ethereum transaction.
@@ -57,9 +57,9 @@ impl Eip2930Transaction {
 
         let tail = signature.map(|signature| {
             [
-                rlp::uint(signature.y_parity.as_u256()),
-                rlp::uint(U256::from_be_bytes(signature.r)),
-                rlp::uint(U256::from_be_bytes(signature.s)),
+                rlp::uint(signature.y_parity()),
+                rlp::uint(signature.r()),
+                rlp::uint(signature.s()),
             ]
         });
 
@@ -75,6 +75,7 @@ impl Eip2930Transaction {
 mod tests {
     use super::*;
     use crate::transaction::accesslist::StorageSlot;
+    use ethnum::AsU256 as _;
     use hex_literal::hex;
     use serde_json::json;
 
