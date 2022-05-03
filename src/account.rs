@@ -1,20 +1,19 @@
 //! Module implementing `secp256k1` private key.
 
 mod address;
+mod prehashed;
+mod public;
 mod signature;
 
-pub use self::{
-    address::Address,
-    signature::{Signature, YParity},
-};
+use self::prehashed::Prehashed;
+pub use self::{address::Address, public::PublicKey, signature::Signature};
 use crate::hash;
 use anyhow::Result;
-pub use secp256k1::PublicKey;
-use secp256k1::{Message, Secp256k1, SecretKey, ONE_KEY};
-use std::{
-    convert::TryInto,
-    fmt::{self, Debug, Formatter},
+use k256::{
+    ecdsa::{signature::DigestSigner as _, SigningKey},
+    SecretKey,
 };
+use std::fmt::{self, Debug, Formatter};
 
 /// A struct representing an Ethereum private key.
 pub struct PrivateKey(SecretKey);
@@ -22,66 +21,45 @@ pub struct PrivateKey(SecretKey);
 impl PrivateKey {
     /// Creates a private key from a secret.
     pub fn new(secret: impl AsRef<[u8]>) -> Result<Self> {
-        let key = SecretKey::from_slice(secret.as_ref())?;
+        let key = SecretKey::from_be_bytes(secret.as_ref())?;
         Ok(PrivateKey(key))
     }
 
     /// Returns the public key for the private key.
     pub fn public(&self) -> PublicKey {
-        let secp = Secp256k1::signing_only();
-        PublicKey::from_secret_key(&secp, &self.0)
+        PublicKey(self.0.public_key())
     }
 
     /// Returns the public address for the private key.
     pub fn address(&self) -> Address {
-        let public_key = self.public().serialize_uncompressed();
+        let encoded = self.public().encode_uncompressed();
 
         // NOTE: An ethereum address is the last 20 bytes of the keccak hash of
-        // the public key. Note that `libsecp256k1` public key is serialized
-        // into 65 bytes as the first byte is always 0x04 as a tag to mark a
-        // uncompressed public key. Discard it for the public address
-        // calculation.
-        debug_assert_eq!(public_key[0], 0x04);
-        let hash = hash::keccak256(&public_key[1..]);
+        // the concatenated elliptic curve coordinates of the public key. Note
+        // that an encoded uncompressed public key is serialized into 65 bytes
+        // where the first byte is a SEC1 tag that is always 0x04 (representing
+        // an uncompressed point) and the subsequent bytes are the coordinates
+        // we want. So discard the first byte for the address calculation.
+        debug_assert_eq!(encoded[0], 0x04);
+        let hash = hash::keccak256(&encoded[1..]);
+
         Address::from_slice(&hash[12..])
     }
 
     /// Returns the private key's 32 byte secret.
     pub fn secret(&self) -> [u8; 32] {
-        *self.0.as_ref()
+        self.0.to_be_bytes().into()
     }
 
     /// Generate a signature for the specified message.
     pub fn sign(&self, message: [u8; 32]) -> Signature {
-        let message = Message::from_slice(&message).expect("invalid message");
-
-        let (recovery_id, raw_signature) = Secp256k1::signing_only()
-            .sign_ecdsa_recoverable(&message, &self.0)
-            .serialize_compact();
-        debug_assert!(matches!(recovery_id.to_i32(), 0 | 1));
-        debug_assert_eq!(raw_signature.len(), 64);
-
-        Signature {
-            y_parity: match recovery_id.to_i32() {
-                0 => YParity::Even,
-                1 => YParity::Odd,
-                n => unreachable!("non 0 or 1 signature y-parity bit {}", n),
-            },
-            r: raw_signature[..32].try_into().unwrap(),
-            s: raw_signature[32..].try_into().unwrap(),
-        }
+        Signature(SigningKey::from(&self.0).sign_digest(Prehashed::Message(message)))
     }
 }
 
 impl Debug for PrivateKey {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         f.debug_tuple("PrivateKey").field(&self.address()).finish()
-    }
-}
-
-impl Drop for PrivateKey {
-    fn drop(&mut self) {
-        self.0 = ONE_KEY;
     }
 }
 
@@ -106,11 +84,11 @@ mod tests {
         let message = hash::keccak256(b"\x19Ethereum Signed Message:\n12Hello World!");
         assert_eq!(
             key.sign(message),
-            Signature {
-                y_parity: YParity::Odd,
-                r: hex!("408790f153cbfa2722fc708a57d97a43b24429724cf060df7c915d468c43bd84"),
-                s: hex!("61c96aac95ce37d7a31087b6634f4a3ea439a9f704b5c818584fa2a32fa83859"),
-            },
+            Signature::from_parts(
+                1,
+                hex!("408790f153cbfa2722fc708a57d97a43b24429724cf060df7c915d468c43bd84"),
+                hex!("61c96aac95ce37d7a31087b6634f4a3ea439a9f704b5c818584fa2a32fa83859"),
+            ),
         );
     }
 }
