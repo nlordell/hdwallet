@@ -19,7 +19,7 @@ pub fn run(options: Options) -> Result<()> {
                 .account
                 .private_key()?
                 .public()
-                .serialize_uncompressed()
+                .encode_uncompressed()
         )
     );
     Ok(())

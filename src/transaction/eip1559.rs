@@ -6,7 +6,7 @@ use crate::{
     transaction::accesslist::AccessList,
     transaction::rlp,
 };
-use ethnum::{AsU256 as _, U256};
+use ethnum::U256;
 use serde::Deserialize;
 
 /// An EIP-1559 Ethereum transaction.
@@ -19,10 +19,11 @@ pub struct Eip1559Transaction {
     /// The nonce for the transaction.
     #[serde(with = "serialization::u256")]
     pub nonce: U256,
-    /// The gas price in Wei for the transaction.
+    /// The maximum priority fee in Wei for the transaction.
     #[serde(rename = "maxPriorityFeePerGas")]
     #[serde(with = "serialization::u256")]
     pub max_priority_fee_per_gas: U256,
+    /// The maximum gas price in Wei for the transaction.
     #[serde(rename = "maxFeePerGas")]
     #[serde(with = "serialization::u256")]
     pub max_fee_per_gas: U256,
@@ -62,9 +63,9 @@ impl Eip1559Transaction {
 
         let tail = signature.map(|signature| {
             [
-                rlp::uint(signature.y_parity.as_u256()),
-                rlp::uint(U256::from_be_bytes(signature.r)),
-                rlp::uint(U256::from_be_bytes(signature.s)),
+                rlp::uint(signature.y_parity()),
+                rlp::uint(signature.r()),
+                rlp::uint(signature.s()),
             ]
         });
 
@@ -80,6 +81,7 @@ impl Eip1559Transaction {
 mod tests {
     use super::*;
     use crate::transaction::accesslist::StorageSlot;
+    use ethnum::AsU256 as _;
     use hex_literal::hex;
     use serde_json::json;
 
