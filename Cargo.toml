@@ -15,8 +15,8 @@ clap = { version = "3", features = ["derive", "env"] }
 ethnum = "1"
 hex = "0.4"
 hmac = { version = "0.12", features = ["std"] }
-pbkdf2 = { version = "0.10", default-features = false }
-secp256k1 = { version = "0.21", features = ["recovery"] }
+pbkdf2 = { version = "0.11", default-features = false }
+secp256k1 = { version = "0.22", features = ["recovery"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
