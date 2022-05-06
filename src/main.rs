@@ -5,10 +5,7 @@ use std::process;
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Parser)]
-#[clap(
-    name = "hdwallet",
-    about = "Hierarchical deterministic wallet for Ethereum"
-)]
+#[clap(version, about)]
 enum Options {
     #[clap(about = "Print account public address")]
     Address(cmd::address::Options),
