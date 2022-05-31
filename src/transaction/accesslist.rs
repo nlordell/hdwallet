@@ -1,7 +1,8 @@
 //! Module with EIP-2930 access list type definition with RLP encoding and JSON
 //! serialization implementation.
 
-use crate::{account::Address, serialization, transaction::rlp};
+use crate::{serialization, transaction::rlp};
+use ethaddr::Address;
 use serde::Deserialize;
 
 /// An Ethereum virtual machine storage slot.
@@ -36,6 +37,7 @@ impl AccessList {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ethaddr::address;
     use hex_literal::hex;
     use serde_json::json;
 
@@ -55,7 +57,7 @@ mod tests {
             .unwrap(),
             AccessList(vec![
                 (
-                    Address(hex!("de0b295669a9fd93d5f28d9ec85e40f4cb697bae")),
+                    address!("0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe"),
                     vec![
                         StorageSlot(hex!(
                             "0000000000000000000000000000000000000000000000000000000000000003"
@@ -66,7 +68,7 @@ mod tests {
                     ]
                 ),
                 (
-                    Address(hex!("bb9bc244d798123fde783fcc1c72d3bb8c189413")),
+                    address!("0xBB9bc244D798123fDe783fCc1C72d3Bb8C189413"),
                     vec![]
                 )
             ]),
@@ -78,7 +80,7 @@ mod tests {
         assert_eq!(
             AccessList(vec![
                 (
-                    Address(hex!("de0b295669a9fd93d5f28d9ec85e40f4cb697bae")),
+                    address!("0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe"),
                     vec![
                         StorageSlot(hex!(
                             "0000000000000000000000000000000000000000000000000000000000000003"
@@ -89,7 +91,7 @@ mod tests {
                     ]
                 ),
                 (
-                    Address(hex!("bb9bc244d798123fde783fcc1c72d3bb8c189413")),
+                    address!("0xBB9bc244D798123fDe783fCc1C72d3Bb8C189413"),
                     vec![]
                 )
             ])

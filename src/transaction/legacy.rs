@@ -1,10 +1,7 @@
 //! Legacy Ethereum transaction type definition and RLP encoding.
 
-use crate::{
-    account::{Address, Signature},
-    serialization,
-    transaction::rlp,
-};
+use crate::{account::Signature, serialization, transaction::rlp};
+use ethaddr::Address;
 use ethnum::U256;
 use serde::Deserialize;
 
@@ -12,25 +9,25 @@ use serde::Deserialize;
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 pub struct LegacyTransaction {
     /// The nonce for the transaction.
-    #[serde(with = "serialization::u256")]
+    #[serde(with = "ethnum::serde::permissive")]
     pub nonce: U256,
     /// The gas price in Wei for the transaction.
-    #[serde(rename = "gasPrice", with = "serialization::u256")]
+    #[serde(rename = "gasPrice", with = "ethnum::serde::permissive")]
     pub gas_price: U256,
     /// The gas limit for the transaction.
-    #[serde(with = "serialization::u256")]
+    #[serde(with = "ethnum::serde::permissive")]
     pub gas: U256,
     /// The target address for the transaction. This can also be `None` to
     /// indicate a contract creation transaction.
     pub to: Option<Address>,
     /// The amount of Ether to send with the transaction.
-    #[serde(with = "serialization::u256")]
+    #[serde(with = "ethnum::serde::permissive")]
     pub value: U256,
     /// The calldata to use for the transaction.
     #[serde(with = "serialization::bytes")]
     pub data: Vec<u8>,
     /// Optional chain ID for the transaction.
-    #[serde(default, rename = "chainId", with = "serialization::u256::option")]
+    #[serde(default, rename = "chainId", with = "serialization::numopt")]
     pub chain_id: Option<U256>,
 }
 
@@ -59,6 +56,7 @@ impl LegacyTransaction {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ethaddr::address;
     use ethnum::AsU256 as _;
     use hex_literal::hex;
     use serde_json::json;
@@ -92,7 +90,7 @@ mod tests {
                 .unwrap()
                 .to
                 .unwrap(),
-            Address(hex!("deadbeefdeadbeefdeadbeefdeadbeefdeadbeef")),
+            address!("0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF"),
         );
     }
 
@@ -104,7 +102,7 @@ mod tests {
                 nonce: 66.as_u256(),
                 gas_price: 42e9.as_u256(),
                 gas: 30_000.as_u256(),
-                to: Some(Address(hex!("deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"))),
+                to: Some(address!("0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF")),
                 value: 13.37e18.as_u256(),
                 data: vec![],
             }

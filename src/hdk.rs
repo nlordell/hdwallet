@@ -65,8 +65,8 @@ fn derive_slice(seed: &[u8], path: &Path) -> Result<PrivateKey> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{account::Address, ganache::DETERMINISTIC_MNEMONIC, mnemonic::Mnemonic};
-    use hex_literal::hex;
+    use crate::{ganache::DETERMINISTIC_MNEMONIC, mnemonic::Mnemonic};
+    use ethaddr::address;
 
     #[test]
     fn ganache_deterministic_mnemonic() {
@@ -76,7 +76,7 @@ mod tests {
         let account = derive(mnemonic.seed(""), &path).unwrap();
         assert_eq!(
             account.address(),
-            Address(hex!("90F8bf6A479f320ead074411a4B0e7944Ea8c9C1")),
+            address!("0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1"),
         );
     }
 }

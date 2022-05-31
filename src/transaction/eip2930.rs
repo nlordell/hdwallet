@@ -1,11 +1,9 @@
 //! EIp-2930 Ethereum transaction with access list type definition and RLP encoding.
 
 use crate::{
-    account::{Address, Signature},
-    serialization,
-    transaction::accesslist::AccessList,
-    transaction::rlp,
+    account::Signature, serialization, transaction::accesslist::AccessList, transaction::rlp,
 };
+use ethaddr::Address;
 use ethnum::U256;
 use serde::Deserialize;
 
@@ -13,24 +11,22 @@ use serde::Deserialize;
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 pub struct Eip2930Transaction {
     /// The chain ID for the transaction.
-    #[serde(rename = "chainId")]
-    #[serde(with = "serialization::u256")]
+    #[serde(rename = "chainId", with = "ethnum::serde::permissive")]
     pub chain_id: U256,
     /// The nonce for the transaction.
-    #[serde(with = "serialization::u256")]
+    #[serde(with = "ethnum::serde::permissive")]
     pub nonce: U256,
     /// The gas price in Wei for the transaction.
-    #[serde(rename = "gasPrice")]
-    #[serde(with = "serialization::u256")]
+    #[serde(rename = "gasPrice", with = "ethnum::serde::permissive")]
     pub gas_price: U256,
     /// The gas limit for the transaction.
-    #[serde(with = "serialization::u256")]
+    #[serde(with = "ethnum::serde::permissive")]
     pub gas: U256,
     /// The target address for the transaction. This can also be `None` to
     /// indicate a contract creation transaction.
     pub to: Option<Address>,
     /// The amount of Ether to send with the transaction.
-    #[serde(with = "serialization::u256")]
+    #[serde(with = "ethnum::serde::permissive")]
     pub value: U256,
     /// The calldata to use for the transaction.
     #[serde(with = "serialization::bytes")]
@@ -75,6 +71,7 @@ impl Eip2930Transaction {
 mod tests {
     use super::*;
     use crate::transaction::accesslist::StorageSlot;
+    use ethaddr::address;
     use ethnum::AsU256 as _;
     use hex_literal::hex;
     use serde_json::json;
@@ -110,7 +107,7 @@ mod tests {
                 .unwrap()
                 .to
                 .unwrap(),
-            Address(hex!("deadbeefdeadbeefdeadbeefdeadbeefdeadbeef")),
+            address!("0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF"),
         );
     }
 
@@ -122,7 +119,7 @@ mod tests {
                 nonce: 66.as_u256(),
                 gas_price: 42e9.as_u256(),
                 gas: 30_000.as_u256(),
-                to: Some(Address(hex!("deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"))),
+                to: Some(address!("0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF")),
                 value: 13.37e18.as_u256(),
                 data: vec![],
                 access_list: AccessList::default(),
@@ -149,7 +146,7 @@ mod tests {
                 .to_vec(),
                 access_list: AccessList(vec![
                     (
-                        Address(hex!("1111111111111111111111111111111111111111")),
+                        address!("0x1111111111111111111111111111111111111111"),
                         vec![
                             StorageSlot(hex!(
                                 "a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0"
@@ -160,7 +157,7 @@ mod tests {
                         ],
                     ),
                     (
-                        Address(hex!("2222222222222222222222222222222222222222")),
+                        address!("0x2222222222222222222222222222222222222222"),
                         vec![],
                     ),
                 ]),

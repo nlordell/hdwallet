@@ -1,11 +1,9 @@
 //! EIp-1559 Ethereum transaction with base gas pricing type definition and RLP encoding.
 
 use crate::{
-    account::{Address, Signature},
-    serialization,
-    transaction::accesslist::AccessList,
-    transaction::rlp,
+    account::Signature, serialization, transaction::accesslist::AccessList, transaction::rlp,
 };
+use ethaddr::Address;
 use ethnum::U256;
 use serde::Deserialize;
 
@@ -13,28 +11,25 @@ use serde::Deserialize;
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 pub struct Eip1559Transaction {
     /// The chain ID for the transaction.
-    #[serde(rename = "chainId")]
-    #[serde(with = "serialization::u256")]
+    #[serde(rename = "chainId", with = "ethnum::serde::permissive")]
     pub chain_id: U256,
     /// The nonce for the transaction.
-    #[serde(with = "serialization::u256")]
+    #[serde(with = "ethnum::serde::permissive")]
     pub nonce: U256,
     /// The maximum priority fee in Wei for the transaction.
-    #[serde(rename = "maxPriorityFeePerGas")]
-    #[serde(with = "serialization::u256")]
+    #[serde(rename = "maxPriorityFeePerGas", with = "ethnum::serde::permissive")]
     pub max_priority_fee_per_gas: U256,
     /// The maximum gas price in Wei for the transaction.
-    #[serde(rename = "maxFeePerGas")]
-    #[serde(with = "serialization::u256")]
+    #[serde(rename = "maxFeePerGas", with = "ethnum::serde::permissive")]
     pub max_fee_per_gas: U256,
     /// The gas limit for the transaction.
-    #[serde(with = "serialization::u256")]
+    #[serde(with = "ethnum::serde::permissive")]
     pub gas: U256,
     /// The target address for the transaction. This can also be `None` to
     /// indicate a contract creation transaction.
     pub to: Option<Address>,
     /// The amount of Ether to send with the transaction.
-    #[serde(with = "serialization::u256")]
+    #[serde(with = "ethnum::serde::permissive")]
     pub value: U256,
     /// The calldata to use for the transaction.
     #[serde(with = "serialization::bytes")]
@@ -81,6 +76,7 @@ impl Eip1559Transaction {
 mod tests {
     use super::*;
     use crate::transaction::accesslist::StorageSlot;
+    use ethaddr::address;
     use ethnum::AsU256 as _;
     use hex_literal::hex;
     use serde_json::json;
@@ -119,7 +115,7 @@ mod tests {
         let deserialized = serde_json::from_value::<Eip1559Transaction>(tx).unwrap();
         assert_eq!(
             deserialized.to.unwrap(),
-            Address(hex!("deadbeefdeadbeefdeadbeefdeadbeefdeadbeef")),
+            address!("0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF"),
         );
         assert_eq!(
             deserialized.access_list,
@@ -136,7 +132,7 @@ mod tests {
                 max_priority_fee_per_gas: 28e9.as_u256(),
                 max_fee_per_gas: 42e9.as_u256(),
                 gas: 30_000.as_u256(),
-                to: Some(Address(hex!("deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"))),
+                to: Some(address!("0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF")),
                 value: 13.37e18.as_u256(),
                 data: vec![],
                 access_list: AccessList::default(),
@@ -164,7 +160,7 @@ mod tests {
                 .to_vec(),
                 access_list: AccessList(vec![
                     (
-                        Address(hex!("1111111111111111111111111111111111111111")),
+                        address!("0x1111111111111111111111111111111111111111"),
                         vec![
                             StorageSlot(hex!(
                                 "a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0"
@@ -175,7 +171,7 @@ mod tests {
                         ],
                     ),
                     (
-                        Address(hex!("2222222222222222222222222222222222222222")),
+                        address!("0x2222222222222222222222222222222222222222"),
                         vec![],
                     ),
                 ]),
