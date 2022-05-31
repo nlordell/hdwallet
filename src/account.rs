@@ -1,14 +1,14 @@
 //! Module implementing `secp256k1` private key.
 
-mod address;
 mod prehashed;
 mod public;
 mod signature;
 
 use self::prehashed::Prehashed;
-pub use self::{address::Address, public::PublicKey, signature::Signature};
+pub use self::{public::PublicKey, signature::Signature};
 use crate::hash;
 use anyhow::Result;
+use ethaddr::Address;
 use k256::{
     ecdsa::{signature::DigestSigner as _, SigningKey},
     SecretKey,

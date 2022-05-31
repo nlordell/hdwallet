@@ -1,12 +1,12 @@
 //! Module for hashing EIP-712 typed data.
 
 use crate::{
-    account::Address,
     hash,
     serialization::{self, JsonObject},
 };
 use anyhow::{bail, ensure, Context as _, Result};
-use ethnum::U256;
+use ethaddr::Address;
+use ethnum::{serde::permissive, I256, U256};
 use serde::{
     de::{self, Deserializer},
     Deserialize,
@@ -21,6 +21,8 @@ use std::{
 /// EIP-712 typed data.
 pub struct TypedData {
     digest: [u8; 32],
+    domain_separator: [u8; 32],
+    message_hash: [u8; 32],
 }
 
 impl TypedData {
@@ -30,6 +32,16 @@ impl TypedData {
     pub fn signing_message(&self) -> [u8; 32] {
         self.digest
     }
+
+    /// Returns the 32-byte hash of the typed data domain.
+    pub fn domain_separator(&self) -> [u8; 32] {
+        self.domain_separator
+    }
+
+    /// Returns the 32-byte hash of the typed data message.
+    pub fn message_hash(&self) -> [u8; 32] {
+        self.message_hash
+    }
 }
 
 impl<'de> Deserialize<'de> for TypedData {
@@ -37,10 +49,9 @@ impl<'de> Deserialize<'de> for TypedData {
     where
         D: Deserializer<'de>,
     {
-        let blob = TypedDataBlob::deserialize(deserializer)?;
-        Ok(Self {
-            digest: blob.digest().map_err(de::Error::custom)?,
-        })
+        TypedDataBlob::deserialize(deserializer)?
+            .compute()
+            .map_err(de::Error::custom)
     }
 }
 
@@ -54,7 +65,7 @@ struct TypedDataBlob {
 }
 
 impl TypedDataBlob {
-    fn digest(self) -> Result<[u8; 32]> {
+    fn compute(self) -> Result<TypedData> {
         self.verify_domain_type()?;
 
         let TypedDataBlob {
@@ -70,7 +81,13 @@ impl TypedDataBlob {
         buffer[0..2].copy_from_slice(b"\x19\x01");
         buffer[2..34].copy_from_slice(&domain_separator);
         buffer[34..66].copy_from_slice(&message_hash);
-        Ok(hash::keccak256(buffer))
+        let digest = hash::keccak256(buffer);
+
+        Ok(TypedData {
+            digest,
+            domain_separator,
+            message_hash,
+        })
     }
 
     fn verify_domain_type(&self) -> Result<()> {
@@ -87,7 +104,7 @@ impl TypedDataBlob {
             !domain_type.members.is_empty(),
             "EIP-712 domain must have at least one member"
         );
-        domain_type.members.iter().try_fold(
+        let _ = domain_type.members.iter().try_fold(
             DOMAIN_MEMBERS.iter(),
             |mut allowed_members, member| {
                 let (_, kind) = allowed_members
@@ -195,7 +212,7 @@ impl Types {
                 }
             }
             MemberKind::Uint(n) => {
-                let value = serialization::u256::deserialize(value)?;
+                let value = permissive::deserialize::<U256, _>(value)?;
                 ensure!(
                     value.leading_zeros() + n >= 256,
                     "value {:#x} overflows uint{}",
@@ -205,7 +222,7 @@ impl Types {
                 value.to_be_bytes()
             }
             MemberKind::Int(n) => {
-                let value = serialization::i256::deserialize(value)?;
+                let value = permissive::deserialize::<I256, _>(value)?;
                 ensure!(
                     value.unsigned_abs().leading_zeros() + n >= 256,
                     "value {:#x} overflows int{}",

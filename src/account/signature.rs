@@ -1,8 +1,15 @@
 //! Module containing signature data model.
 
+use anyhow::bail;
 use ethnum::{AsU256 as _, U256};
-use k256::ecdsa::recoverable;
-use std::fmt::{self, Display, Formatter};
+use k256::ecdsa::{
+    self,
+    recoverable::{self, Id},
+};
+use std::{
+    fmt::{self, Display, Formatter},
+    str::FromStr,
+};
 
 /// A secp256k1 signature.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -33,6 +40,17 @@ impl Signature {
     pub fn s(&self) -> U256 {
         U256::from_be_bytes(self.0.s().to_bytes().into())
     }
+
+    /// Creates a signature from its raw parts.
+    pub fn from_parts(y_parity: u8, r: [u8; 32], s: [u8; 32]) -> Self {
+        Self(
+            recoverable::Signature::new(
+                &ecdsa::Signature::from_scalars(r, s).unwrap(),
+                Id::new(y_parity).unwrap(),
+            )
+            .unwrap(),
+        )
+    }
 }
 
 impl Display for Signature {
@@ -47,25 +65,31 @@ impl Display for Signature {
     }
 }
 
+impl FromStr for Signature {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut signature = [0; 65];
+        hex::decode_to_slice(s, &mut signature)?;
+
+        let v = signature[64];
+        let y_parity = match v {
+            27 => 0,
+            28 => 1,
+            _ => bail!("invalid V-value, must be 27 or 28 but got {v}"),
+        };
+
+        Ok(Self::from_parts(
+            y_parity,
+            signature[0..32].try_into().unwrap(),
+            signature[32..64].try_into().unwrap(),
+        ))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use k256::ecdsa::{self, recoverable::Id};
-
-    impl Signature {
-        /// Creates a signature from its raw parts.
-        ///
-        /// Convinience method used for testing.
-        pub fn from_parts(y_parity: u8, r: [u8; 32], s: [u8; 32]) -> Self {
-            Self(
-                recoverable::Signature::new(
-                    &ecdsa::Signature::from_scalars(r, s).unwrap(),
-                    Id::new(y_parity).unwrap(),
-                )
-                .unwrap(),
-            )
-        }
-    }
 
     #[test]
     fn replay_protection() {
