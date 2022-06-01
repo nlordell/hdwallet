@@ -4,7 +4,6 @@ mod prehashed;
 mod public;
 mod signature;
 
-use self::prehashed::Prehashed;
 pub use self::{public::PublicKey, signature::Signature};
 use crate::hash;
 use anyhow::Result;
@@ -53,7 +52,7 @@ impl PrivateKey {
 
     /// Generate a signature for the specified message.
     pub fn sign(&self, message: [u8; 32]) -> Signature {
-        Signature(SigningKey::from(&self.0).sign_digest(Prehashed::Message(message)))
+        Signature(SigningKey::from(&self.0).sign_digest(prehashed::message(message)))
     }
 }
 
