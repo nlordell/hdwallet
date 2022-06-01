@@ -16,7 +16,6 @@ pub struct Options {
 }
 
 #[derive(Debug, Parser)]
-#[clap(rename_all = "lowercase")]
 enum Input {
     /// Hash an Ethereum transaction.
     Transaction {
@@ -39,6 +38,7 @@ enum Input {
     },
 
     /// Hash EIP-712 typed data.
+    #[clap(name = "typeddata")]
     TypedData {
         /// Path to the EIP-712 typed data in JSON format.
         #[clap(name = "TYPEDDATA")]
