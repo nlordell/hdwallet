@@ -5,57 +5,46 @@
 //! allowing `k256` signing to be done on a prehashed messsage.
 
 use k256::ecdsa::digest::{
-    consts::U32, generic_array::GenericArray, BlockInput, FixedOutput, Reset, Update,
+    core_api::{
+        Block, BlockSizeUser, Buffer, BufferKindUser, CoreWrapper, FixedOutputCore, UpdateCore,
+    },
+    HashMarker, Output, OutputSizeUser,
 };
-use sha2::{digest::core_api::BlockSizeUser, Digest as _, Sha256};
-use std::mem;
+use sha3::Keccak256Core;
 
-/// A pre-hashed meessage.
-#[derive(Clone)]
-pub enum Prehashed {
-    /// The pre-hashed message to use for signing.
-    Message([u8; 32]),
-    /// The hasher used for rfc-6979 nonce generation for deterministic ECDSA
-    /// signature computation.
-    Rfc6979(Sha256),
+/// Returns a prehashed message.
+pub fn message(message: [u8; 32]) -> Prehashed {
+    CoreWrapper::from_core(Core(message))
 }
 
-impl Default for Prehashed {
-    fn default() -> Self {
-        Self::Rfc6979(Sha256::default())
+/// A pre-hashed meessage digest shim.
+pub type Prehashed = CoreWrapper<Core>;
+
+#[derive(Clone, Default)]
+pub struct Core(pub [u8; 32]);
+
+impl BufferKindUser for Core {
+    type BufferKind = <Keccak256Core as BufferKindUser>::BufferKind;
+}
+
+impl BlockSizeUser for Core {
+    type BlockSize = <Keccak256Core as BlockSizeUser>::BlockSize;
+}
+
+impl FixedOutputCore for Core {
+    fn finalize_fixed_core(&mut self, _: &mut Buffer<Self>, out: &mut Output<Self>) {
+        *out = self.0.into()
     }
 }
 
-impl BlockInput for Prehashed {
-    type BlockSize = <Sha256 as BlockSizeUser>::BlockSize;
+impl HashMarker for Core {}
+
+impl OutputSizeUser for Core {
+    type OutputSize = <Keccak256Core as OutputSizeUser>::OutputSize;
 }
 
-impl FixedOutput for Prehashed {
-    type OutputSize = U32;
-
-    fn finalize_into(self, out: &mut GenericArray<u8, Self::OutputSize>) {
-        match self {
-            Self::Message(message) => *out = message.into(),
-            Self::Rfc6979(hasher) => hasher.finalize_into(out),
-        }
-    }
-
-    fn finalize_into_reset(&mut self, out: &mut GenericArray<u8, Self::OutputSize>) {
-        mem::take(self).finalize_into(out)
-    }
-}
-
-impl Reset for Prehashed {
-    fn reset(&mut self) {
-        *self = Default::default();
-    }
-}
-
-impl Update for Prehashed {
-    fn update(&mut self, data: impl AsRef<[u8]>) {
-        match self {
-            Prehashed::Message(_) => unimplemented!(),
-            Prehashed::Rfc6979(hasher) => hasher.update(data),
-        }
+impl UpdateCore for Core {
+    fn update_blocks(&mut self, _: &[Block<Self>]) {
+        unimplemented!()
     }
 }
