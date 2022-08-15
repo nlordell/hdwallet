@@ -25,7 +25,6 @@ impl Language {
         Ok((
             language,
             phrase
-                .trim()
                 .split_whitespace()
                 .filter(|word| !word.is_empty())
                 .collect(),
