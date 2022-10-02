@@ -266,7 +266,7 @@ impl Types {
 
                 let mut buffer = vec![0_u8; 32 * value.len()];
                 for (i, element) in value.into_iter().enumerate() {
-                    buffer[(i * 32)..][..32].copy_from_slice(&self.encode_value(&*inner, element)?);
+                    buffer[(i * 32)..][..32].copy_from_slice(&self.encode_value(inner, element)?);
                 }
                 hash::keccak256(&buffer)
             }

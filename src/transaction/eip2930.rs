@@ -8,7 +8,7 @@ use ethnum::U256;
 use serde::Deserialize;
 
 /// An EIP-2930 Ethereum transaction.
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 pub struct Eip2930Transaction {
     /// The chain ID for the transaction.
     #[serde(rename = "chainId", with = "ethnum::serde::permissive")]

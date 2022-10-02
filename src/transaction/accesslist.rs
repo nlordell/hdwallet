@@ -18,7 +18,7 @@ impl StorageSlot {
 }
 
 /// An EIP-2930 access list.
-#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq)]
 #[serde(transparent)]
 pub struct AccessList(pub Vec<(Address, Vec<StorageSlot>)>);
 

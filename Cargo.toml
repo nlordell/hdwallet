@@ -11,7 +11,7 @@ license = "GPL-3.0-or-later"
 
 [dependencies]
 anyhow = "1"
-clap = { version = "3", features = ["derive", "env"] }
+clap = { version = "4", features = ["derive", "env"] }
 ethaddr = { version = "0.1", features = ["macros", "serde"] }
 ethnum = { version = "1", features = ["serde"] }
 hex = "0.4"
