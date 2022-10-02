@@ -58,7 +58,7 @@ enum Input {
     /// Sign a raw data.
     Raw {
         /// The 32 byte message to sign specified as a hexadecimal string.
-        #[clap(name = "BYTES", parse(try_from_str = permissive_hex_digest))]
+        #[clap(name = "BYTES", value_parser = permissive_hex_digest)]
         message: [u8; 32],
     },
 }

@@ -1,6 +1,5 @@
 //! Module implementing `secp256k1` private key.
 
-mod prehashed;
 mod public;
 mod signature;
 
@@ -9,7 +8,7 @@ use crate::hash;
 use anyhow::Result;
 use ethaddr::Address;
 use k256::{
-    ecdsa::{signature::DigestSigner as _, SigningKey},
+    ecdsa::{signature::hazmat::PrehashSigner as _, SigningKey},
     SecretKey,
 };
 use std::fmt::{self, Debug, Formatter};
@@ -52,7 +51,12 @@ impl PrivateKey {
 
     /// Generate a signature for the specified message.
     pub fn sign(&self, message: [u8; 32]) -> Signature {
-        Signature(SigningKey::from(&self.0).sign_digest(prehashed::message(message)))
+        self.try_sign(message).expect("signature operation failed")
+    }
+
+    /// Generate a signature for the specified message.
+    pub fn try_sign(&self, message: [u8; 32]) -> Result<Signature> {
+        Ok(Signature(SigningKey::from(&self.0).sign_prehash(&message)?))
     }
 }
 

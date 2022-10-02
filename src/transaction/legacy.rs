@@ -6,7 +6,7 @@ use ethnum::U256;
 use serde::Deserialize;
 
 /// A Legacy Ethereum transaction.
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 pub struct LegacyTransaction {
     /// The nonce for the transaction.
     #[serde(with = "ethnum::serde::permissive")]

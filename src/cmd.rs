@@ -36,7 +36,7 @@ struct AccountOptions {
 
     /// Manually specified HD path for deriving the account key. This option can
     /// not be used in conjunction with the "--account-index" option.
-    #[clap(long, env, conflicts_with = "account-index")]
+    #[clap(long, env, conflicts_with = "account_index")]
     hd_path: Option<String>,
 }
 
