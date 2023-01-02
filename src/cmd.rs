@@ -56,7 +56,7 @@ impl AccountOptions {
 fn permissive_hex(s: &str) -> Result<Box<[u8]>> {
     let trimmed = s.chars().filter(|c| !c.is_whitespace()).collect::<String>();
     let hex_string = trimmed.strip_prefix("0x").unwrap_or(&trimmed);
-    let bytes = ::hex::decode(&hex_string)?;
+    let bytes = ::hex::decode(hex_string)?;
     // NOTE: Use a boxed slice instead of a `Vec` as the former has special
     // scemantics with `clap`.
     Ok(bytes.into_boxed_slice())
@@ -70,7 +70,7 @@ fn read_input(input: &Path) -> Result<Vec<u8>> {
             io::stdin().read_to_end(&mut buf)?;
             buf
         }
-        _ => fs::read(&input)?,
+        _ => fs::read(input)?,
     };
 
     Ok(data)

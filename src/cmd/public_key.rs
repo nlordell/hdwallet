@@ -15,11 +15,12 @@ pub fn run(options: Options) -> Result<()> {
     println!(
         "0x{}",
         hex::encode(
-            &options
+            options
                 .account
                 .private_key()?
                 .public()
                 .encode_uncompressed()
+                .as_slice()
         )
     );
     Ok(())
