@@ -6,11 +6,13 @@ wallets for Ethereum.
 ## Building and Running
 
 This crate can be built from source with Cargo:
+
 ```
 cargo build
 ```
 
 Additional help is provided on the commandline:
+
 ```
 hdwallet --help
 ```
@@ -25,6 +27,7 @@ Wasm modules.
 
 Running the released Wasm binary requires a Wasm runtime. For example with the
 [`wasmtime`](https://github.com/bytecodealliance/wasmtime) runtime:
+
 ```
 wasmtime hdwallet.wasm -- --help
 ```
