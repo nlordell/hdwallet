@@ -392,7 +392,7 @@ impl<'de> Deserialize<'de> for MemberKind {
         D: Deserializer<'de>,
     {
         let value = Cow::<str>::deserialize(deserializer)?;
-        Ok(MemberKind::from_str(&*value))
+        Ok(MemberKind::from_str(&value))
     }
 }
 
