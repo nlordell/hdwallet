@@ -18,6 +18,6 @@ pub struct Options {
 
 pub fn run(options: Options) -> Result<()> {
     let mnemonic = Mnemonic::random(options.language, options.length)?;
-    println!("{}", mnemonic);
+    println!("{mnemonic}");
     Ok(())
 }

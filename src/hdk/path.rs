@@ -1,6 +1,6 @@
 //! Module implementing parsing for BIP-0032 HD paths used for key derivation.
 
-use anyhow::{anyhow, Context as _, Result};
+use anyhow::{Context as _, Result};
 use std::{
     fmt::{self, Display, Formatter},
     str::FromStr,
@@ -23,7 +23,7 @@ impl Display for Path {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         f.write_str("m")?;
         for component in self.components() {
-            write!(f, "/{}", component)?;
+            write!(f, "/{component}")?;
         }
 
         Ok(())
@@ -36,7 +36,7 @@ impl FromStr for Path {
     fn from_str(s: &str) -> Result<Self> {
         let components = s
             .strip_prefix("m/")
-            .ok_or_else(|| anyhow!("BIP-0032 path missing main node"))?
+            .context("BIP-0032 path missing main node")?
             .split('/')
             .map(Component::from_str)
             .collect::<Result<_>>()?;
@@ -57,8 +57,8 @@ pub enum Component {
 impl Display for Component {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
-            Self::Hardened(value) => write!(f, "{}'", value),
-            Self::Normal(value) => write!(f, "{}", value),
+            Self::Hardened(value) => write!(f, "{value}'"),
+            Self::Normal(value) => write!(f, "{value}"),
         }
     }
 }
@@ -74,7 +74,7 @@ impl FromStr for Component {
 
         let value = value
             .parse()
-            .with_context(|| format!("invalid BIP-0032 path component '{}'", s))?;
+            .with_context(|| format!("invalid BIP-0032 path component '{s}'"))?;
 
         Ok(if hardened {
             Component::Hardened(value)

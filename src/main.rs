@@ -34,9 +34,9 @@ fn main() {
         Options::PublicKey(options) => cmd::public_key::run(options),
     } {
         if cfg!(debug_assertions) {
-            eprintln!("ERROR: {:?}", err);
+            eprintln!("ERROR: {err:?}");
         } else {
-            eprintln!("ERROR: {}", err);
+            eprintln!("ERROR: {err}");
         }
         process::exit(-1);
     }

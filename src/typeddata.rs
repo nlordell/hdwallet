@@ -112,9 +112,7 @@ impl TypedDataBlob {
                     .with_context(|| format!("unexpected EIP-712 domain member {}", member.name))?;
                 ensure!(
                     &member.kind == kind,
-                    "expected EIP-712 domain member {} to be of type {}",
-                    member,
-                    kind
+                    "expected EIP-712 domain member {member} to be of type {kind}",
                 );
                 Ok(allowed_members)
             },
@@ -138,7 +136,7 @@ impl Types {
                 &self.encode_value(
                     &member.kind,
                     data.remove(&member.name).with_context(|| {
-                        format!("{} value missing property {}", kind, member.name)
+                        format!("{kind} value missing property {}", member.name)
                     })?,
                 )?,
             );
@@ -146,8 +144,7 @@ impl Types {
 
         ensure!(
             data.is_empty(),
-            "additional unspecified {} properties: {}",
-            kind,
+            "additional unspecified {kind} properties: {}",
             data.keys().cloned().collect::<Vec<_>>().join(", "),
         );
         Ok(hash::keccak256(&buffer))
@@ -169,7 +166,7 @@ impl Types {
 
         let mut buffer = type_definition.to_string();
         for sub_type in sub_types.values() {
-            write!(buffer, "{}", sub_type)?;
+            write!(buffer, "{sub_type}")?;
         }
 
         Ok(buffer)
@@ -177,14 +174,14 @@ impl Types {
 
     fn type_hash(&self, kind: &str) -> Result<[u8; 32]> {
         let encoded_type = self.encode_type(kind)?;
-        Ok(hash::keccak256(&encoded_type))
+        Ok(hash::keccak256(encoded_type))
     }
 
     fn type_definition<'a>(&'a self, kind: &'a str) -> Result<TypeDefinition<'a>> {
         let members = self
             .0
             .get(kind)
-            .with_context(|| format!("missing EIP-712 type definition for {}", kind))?;
+            .with_context(|| format!("missing EIP-712 type definition for {kind}"))?;
 
         Ok(TypeDefinition { kind, members })
     }
@@ -197,14 +194,13 @@ impl Types {
                     Some(n) => {
                         ensure!(
                             *n == bytes.len() as u32,
-                            "expected byte array of length {} but got {}",
-                            n,
+                            "expected byte array of length {n} but got {}",
                             bytes.len()
                         );
                         let mut buffer = [0_u8; 32];
                         buffer
                             .get_mut(..(*n as usize))
-                            .with_context(|| format!("invalid byte array length {}", n))?
+                            .with_context(|| format!("invalid byte array length {n}"))?
                             .copy_from_slice(&bytes);
                         buffer
                     }
@@ -215,9 +211,7 @@ impl Types {
                 let value = permissive::deserialize::<U256, _>(value)?;
                 ensure!(
                     value.leading_zeros() + n >= 256,
-                    "value {:#x} overflows uint{}",
-                    value,
-                    n,
+                    "value {value:#x} overflows uint{n}",
                 );
                 value.to_be_bytes()
             }
@@ -225,9 +219,7 @@ impl Types {
                 let value = permissive::deserialize::<I256, _>(value)?;
                 ensure!(
                     value.unsigned_abs().leading_zeros() + n >= 256,
-                    "value {:#x} overflows int{}",
-                    value,
-                    n,
+                    "value {value:#x} overflows int{n}",
                 );
                 value.to_be_bytes()
             }
@@ -246,20 +238,19 @@ impl Types {
             MemberKind::Struct(inner) => {
                 let value = match value {
                     Value::Object(value) => value,
-                    value => bail!("expected JSON object but got '{}'", value),
+                    value => bail!("expected JSON object but got '{value}'"),
                 };
                 self.struct_hash(inner, value)?
             }
             MemberKind::Array(inner, size) => {
                 let value = match value {
                     Value::Array(value) => value,
-                    value => bail!("expected JSON array but got '{}'", value),
+                    value => bail!("expected JSON array but got '{value}'"),
                 };
                 if let Some(size) = size {
                     ensure!(
                         value.len() == *size,
-                        "expected fixed array of size {} but got {}",
-                        size,
+                        "expected fixed array of size {size} but got {}",
                         value.len(),
                     );
                 }
@@ -291,10 +282,10 @@ impl Display for TypeDefinition<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{}(", self.kind)?;
         if let Some(first_member) = self.members.get(0) {
-            write!(f, "{}", first_member)?;
+            write!(f, "{first_member}")?;
         }
         for member in self.members.get(1..).into_iter().flatten() {
-            write!(f, ",{}", member)?;
+            write!(f, ",{member}")?;
         }
         write!(f, ")")
     }
@@ -373,15 +364,15 @@ impl Display for MemberKind {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
             MemberKind::Bytes(None) => f.write_str("bytes"),
-            MemberKind::Bytes(Some(n)) => write!(f, "bytes{}", n),
-            MemberKind::Uint(n) => write!(f, "uint{}", n),
-            MemberKind::Int(n) => write!(f, "int{}", n),
+            MemberKind::Bytes(Some(n)) => write!(f, "bytes{n}"),
+            MemberKind::Uint(n) => write!(f, "uint{n}"),
+            MemberKind::Int(n) => write!(f, "int{n}"),
             MemberKind::Bool => f.write_str("bool"),
             MemberKind::Address => f.write_str("address"),
             MemberKind::String => f.write_str("string"),
             MemberKind::Struct(kind) => f.write_str(kind),
-            MemberKind::Array(kind, None) => write!(f, "{}[]", kind),
-            MemberKind::Array(kind, Some(n)) => write!(f, "{}[{}]", kind, n),
+            MemberKind::Array(kind, None) => write!(f, "{kind}[]"),
+            MemberKind::Array(kind, Some(n)) => write!(f, "{kind}[{n}]"),
         }
     }
 }
@@ -669,12 +660,11 @@ mod tests {
         fn verify_domain_type(s: &str) -> Result<()> {
             serde_json::from_str::<TypedDataBlob>(&format!(
                 r#"{{
-                    "types": {{ "EIP712Domain": {} }},
+                    "types": {{ "EIP712Domain": {s} }},
                     "primaryType": "",
                     "domain": {{}},
                     "message": {{}}
                 }}"#,
-                s,
             ))
             .unwrap()
             .verify_domain_type()

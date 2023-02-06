@@ -8,9 +8,10 @@ use crate::hash;
 use anyhow::Result;
 use ethaddr::Address;
 use k256::{
-    ecdsa::{signature::hazmat::PrehashSigner as _, SigningKey},
+    ecdsa::{hazmat::SignPrimitive, SigningKey},
     SecretKey,
 };
+use sha2::Sha256;
 use std::fmt::{self, Debug, Formatter};
 
 /// A struct representing an Ethereum private key.
@@ -56,7 +57,10 @@ impl PrivateKey {
 
     /// Generate a signature for the specified message.
     pub fn try_sign(&self, message: [u8; 32]) -> Result<Signature> {
-        Ok(Signature(SigningKey::from(&self.0).sign_prehash(&message)?))
+        let (signature, recovery_id) = SigningKey::from(&self.0)
+            .as_nonzero_scalar()
+            .try_sign_prehashed_rfc6979::<Sha256>(message.into(), b"")?;
+        Ok(Signature(signature, recovery_id.unwrap()))
     }
 }
 
@@ -88,9 +92,9 @@ mod tests {
         assert_eq!(
             key.sign(message),
             Signature::from_parts(
-                1,
                 hex!("408790f153cbfa2722fc708a57d97a43b24429724cf060df7c915d468c43bd84"),
                 hex!("61c96aac95ce37d7a31087b6634f4a3ea439a9f704b5c818584fa2a32fa83859"),
+                1,
             ),
         );
     }
