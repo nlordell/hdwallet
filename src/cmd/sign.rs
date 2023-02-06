@@ -82,7 +82,7 @@ pub fn run(options: Options) -> Result<()> {
             }
             let signature = account.sign(transaction.signing_message());
             if signature_only {
-                println!("{}", signature);
+                println!("{signature}");
             } else {
                 println!("0x{}", hex::encode(transaction.encode(signature)));
             }

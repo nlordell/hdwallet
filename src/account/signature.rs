@@ -2,10 +2,7 @@
 
 use anyhow::bail;
 use ethnum::{AsU256 as _, U256};
-use k256::ecdsa::{
-    self,
-    recoverable::{self, Id},
-};
+use k256::ecdsa::{self, RecoveryId};
 use std::{
     fmt::{self, Display, Formatter},
     str::FromStr,
@@ -13,22 +10,14 @@ use std::{
 
 /// A secp256k1 signature.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct Signature(pub recoverable::Signature);
+pub struct Signature(pub ecdsa::Signature, pub RecoveryId);
 
 impl Signature {
     /// Returns the y-parity in its 256-bit integer representation.
     ///
     /// Return 0 for even parity, and 1 for odd parity.
     pub fn y_parity(&self) -> U256 {
-        u8::from(self.0.recovery_id()).as_u256()
-    }
-
-    /// Returns the signature's V value with EIP-155 chain replay protection.
-    pub fn v(&self, chain_id: Option<U256>) -> U256 {
-        match chain_id {
-            Some(chain_id) => self.y_parity() + chain_id * 2 + 35,
-            None => self.y_parity() + 27,
-        }
+        u8::from(self.1.is_y_odd()).as_u256()
     }
 
     /// Returns the signature's 32-byte R-value in big-endian representation.
@@ -41,14 +30,23 @@ impl Signature {
         U256::from_be_bytes(self.0.s().to_bytes().into())
     }
 
+    /// Returns the signature's V value with EIP-155 chain replay protection.
+    pub fn v(&self, chain_id: Option<U256>) -> U256 {
+        match chain_id {
+            Some(chain_id) => self.y_parity() + chain_id * 2 + 35,
+            None => self.y_parity() + 27,
+        }
+    }
+
     /// Creates a signature from its raw parts.
-    pub fn from_parts(y_parity: u8, r: [u8; 32], s: [u8; 32]) -> Self {
+    ///
+    /// # Panics
+    ///
+    /// Panics on invalid signature parts.
+    pub fn from_parts(r: [u8; 32], s: [u8; 32], y_parity: u8) -> Self {
         Self(
-            recoverable::Signature::new(
-                &ecdsa::Signature::from_scalars(r, s).unwrap(),
-                Id::new(y_parity).unwrap(),
-            )
-            .unwrap(),
+            ecdsa::Signature::from_scalars(r, s).unwrap(),
+            y_parity.try_into().unwrap(),
         )
     }
 }
@@ -80,9 +78,9 @@ impl FromStr for Signature {
         };
 
         Ok(Self::from_parts(
-            y_parity,
             signature[0..32].try_into().unwrap(),
             signature[32..64].try_into().unwrap(),
+            y_parity,
         ))
     }
 }
@@ -93,13 +91,13 @@ mod tests {
 
     #[test]
     fn replay_protection() {
-        let signature = Signature::from_parts(0, [1; 32], [2; 32]);
+        let signature = Signature::from_parts([1; 32], [2; 32], 0);
         assert_eq!(signature.v(Some(U256::new(1))), U256::new(37));
     }
 
     #[test]
     fn signature_to_string() {
-        let signature = Signature::from_parts(0, [1; 32], [2; 32]);
+        let signature = Signature::from_parts([1; 32], [2; 32], 0);
         assert_eq!(
             signature.to_string(),
             "0x0101010101010101010101010101010101010101010101010101010101010101\

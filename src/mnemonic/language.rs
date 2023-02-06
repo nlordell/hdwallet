@@ -8,8 +8,10 @@ use std::{
 };
 
 /// The mnemonic langage used to select the word list.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub enum Language {
+    // TODO(nlordell): Read the default language from the system locale.
+    #[default]
     English,
     // TODO(nlordell): Support more languages. Note that this is not necessarily
     // trivial as some have specific considerations (like 'ñ' being equivalent
@@ -46,13 +48,6 @@ impl Language {
     }
 }
 
-impl Default for Language {
-    fn default() -> Self {
-        // TODO(nlordell): Read the default language from the system locale.
-        Language::English
-    }
-}
-
 impl Display for Language {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         f.write_str(match self {
@@ -67,7 +62,7 @@ impl FromStr for Language {
     fn from_str(s: &str) -> Result<Self> {
         Ok(match s.to_lowercase().as_str() {
             "english" => Language::English,
-            _ => bail!("unsupported language '{}'", s),
+            _ => bail!("unsupported language '{s}'"),
         })
     }
 }

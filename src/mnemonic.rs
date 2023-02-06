@@ -5,7 +5,7 @@ mod wordlist;
 
 pub use self::{language::Language, wordlist::WORD_COUNT};
 use crate::{hash, rand};
-use anyhow::{anyhow, ensure, Result};
+use anyhow::{ensure, Context as _, Result};
 use hmac::Hmac;
 use sha2::Sha512;
 use std::{
@@ -78,7 +78,7 @@ impl Mnemonic {
             for word in &words {
                 let index = wordlist
                     .search(word)
-                    .ok_or_else(|| anyhow!("invalid BIP-0039 {} word '{}'", language, word))?;
+                    .with_context(|| format!("invalid BIP-0039 {language} word '{word}'"))?;
                 acc = (acc << WORD_BITS) | index;
 
                 bit_offset += WORD_BITS;
@@ -195,7 +195,7 @@ impl Deref for Seed {
 }
 
 fn mnemonic_to_byte_length(len: usize) -> Result<usize> {
-    ensure!(matches!(len, 12..=24), "invalid mnemonic length {}", len);
+    ensure!(matches!(len, 12..=24), "invalid mnemonic length {len}");
 
     // NOTE: Derived from the BIP-0039 spec where `CS` is the checksum bit
     // length, `ENT` is the entropy bit length (so `8 * byte_length`) and `MS`

@@ -15,7 +15,7 @@ const HARDENED: u32 = 0x8000_0000;
 /// Creates a new extended private key for an account index using the standard
 /// Ethereum HD path.
 pub fn derive_index(seed: impl AsRef<[u8]>, account_index: usize) -> Result<PrivateKey> {
-    derive(seed, &format!("m/44'/60'/0'/0/{}", account_index).parse()?)
+    derive(seed, &format!("m/44'/60'/0'/0/{account_index}").parse()?)
 }
 
 /// Creates a new extended private key from a seed.
@@ -50,9 +50,8 @@ fn derive_slice(seed: &[u8], path: &Path) -> Result<PrivateKey> {
 
         let mut child_key = hmac.finalize().into_bytes();
 
-        let child_secret = SecretKey::from_be_bytes(&child_key[..32]).with_context(|| {
-            format!("path '{}' component #{} yields invalid child key", path, i)
-        })?;
+        let child_secret = SecretKey::from_be_bytes(&child_key[..32])
+            .with_context(|| format!("path '{path}' component #{i} yields invalid child key"))?;
         let next_secret = SecretKey::new(*child_secret.as_scalar_core() + *secret.as_scalar_core());
         child_key[..32].copy_from_slice(&next_secret.to_be_bytes());
 
