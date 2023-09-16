@@ -20,7 +20,7 @@ pub struct PrivateKey(SecretKey);
 impl PrivateKey {
     /// Creates a private key from a secret.
     pub fn new(secret: impl AsRef<[u8]>) -> Result<Self> {
-        let key = SecretKey::from_be_bytes(secret.as_ref())?;
+        let key = SecretKey::from_slice(secret.as_ref())?;
         Ok(PrivateKey(key))
     }
 
@@ -47,7 +47,7 @@ impl PrivateKey {
 
     /// Returns the private key's 32 byte secret.
     pub fn secret(&self) -> [u8; 32] {
-        self.0.to_be_bytes().into()
+        self.0.to_bytes().into()
     }
 
     /// Generate a signature for the specified message.
@@ -59,7 +59,7 @@ impl PrivateKey {
     pub fn try_sign(&self, message: [u8; 32]) -> Result<Signature> {
         let (signature, recovery_id) = SigningKey::from(&self.0)
             .as_nonzero_scalar()
-            .try_sign_prehashed_rfc6979::<Sha256>(message.into(), b"")?;
+            .try_sign_prehashed_rfc6979::<Sha256>(&message.into(), b"")?;
         Ok(Signature(signature, recovery_id.unwrap()))
     }
 }

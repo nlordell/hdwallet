@@ -156,7 +156,8 @@ impl Mnemonic {
             salt.nfkd().to_string().as_bytes(),
             ROUNDS,
             &mut buf,
-        );
+        )
+        .expect("HMAC can be initialized with any key length");
 
         Seed(buf)
     }

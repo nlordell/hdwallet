@@ -32,13 +32,13 @@ fn derive_slice(seed: &[u8], path: &Path) -> Result<PrivateKey> {
 
     for (i, component) in path.components().enumerate() {
         let (secret, chain_code) = extended_key.split_at(32);
-        let secret = SecretKey::from_be_bytes(secret)?;
+        let secret = SecretKey::from_slice(secret)?;
 
         let mut hmac: Hmac<Sha512> = Hmac::<Sha512>::new_from_slice(chain_code)?;
         let value = match component {
             Component::Hardened(value) => {
                 hmac.update(&[0]);
-                hmac.update(&secret.to_be_bytes());
+                hmac.update(&secret.to_bytes());
                 value | HARDENED
             }
             Component::Normal(value) => {
@@ -50,10 +50,11 @@ fn derive_slice(seed: &[u8], path: &Path) -> Result<PrivateKey> {
 
         let mut child_key = hmac.finalize().into_bytes();
 
-        let child_secret = SecretKey::from_be_bytes(&child_key[..32])
+        let child_secret = SecretKey::from_slice(&child_key[..32])
             .with_context(|| format!("path '{path}' component #{i} yields invalid child key"))?;
-        let next_secret = SecretKey::new(*child_secret.as_scalar_core() + *secret.as_scalar_core());
-        child_key[..32].copy_from_slice(&next_secret.to_be_bytes());
+        let next_secret =
+            SecretKey::new(*child_secret.as_scalar_primitive() + *secret.as_scalar_primitive());
+        child_key[..32].copy_from_slice(&next_secret.to_bytes());
 
         extended_key = child_key
     }
