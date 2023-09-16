@@ -1,6 +1,6 @@
 [package]
 name = "hdwallet"
-version = "0.2.3"
+version = "0.2.4"
 authors = ["Nicholas Rodrigues Lordello <nlordell@gmail.com>"]
 edition = "2021"
 description = "Hierarchical deterministic wallet for Ethereum"
@@ -16,8 +16,8 @@ ethaddr = { version = "0.1", features = ["macros", "serde"] }
 ethnum = { version = "1", features = ["serde"] }
 hex = "0.4"
 hmac = { version = "0.12", features = ["std"] }
-k256 = "0.12"
-pbkdf2 = { version = "0.11", default-features = false }
+k256 = "0.13"
+pbkdf2 = { version = "0.12", default-features = false }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
@@ -25,5 +25,5 @@ sha3 = "0.10"
 unicode-normalization = "0.1"
 
 [dev-dependencies]
-hex-literal = "0.3"
+hex-literal = "0.4"
 maplit = "1"

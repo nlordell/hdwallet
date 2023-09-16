@@ -1,7 +1,7 @@
 //! Module containing the embedded BIP-0039 word lists.
 
 use crate::mnemonic::Language;
-use std::{mem::MaybeUninit, sync::Once};
+use std::sync::OnceLock;
 
 /// A parsed word list.
 pub struct Wordlist<'a>(Vec<&'a str>);
@@ -52,16 +52,10 @@ macro_rules! match_language {
     )*) => {$(
         match $lang {
             Language::$l => {
-                static mut WORDLIST: MaybeUninit<Wordlist> = MaybeUninit::uninit();
-                static INIT: Once = Once::new();
-                INIT.call_once(|| {
-                    unsafe {
-                        WORDLIST.as_mut_ptr().write(Wordlist::parse(
-                            include_str!(concat!("wordlist/", $f)),
-                        ))
-                    }
-                });
-                unsafe { &*WORDLIST.as_ptr() }
+                static WORDLIST: OnceLock<Wordlist> = OnceLock::new();
+                WORDLIST.get_or_init(|| {
+                    Wordlist::parse(include_str!(concat!("wordlist/", $f)))
+                })
             }
         }
     )*};
