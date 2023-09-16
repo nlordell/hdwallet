@@ -12,6 +12,7 @@ mod rand;
 mod serialization;
 pub mod transaction;
 pub mod typeddata;
+pub mod shamir;
 
 #[cfg(test)]
 mod ganache;
