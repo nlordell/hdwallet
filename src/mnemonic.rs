@@ -47,7 +47,7 @@ impl Mnemonic {
             let mut buf = [0; 64];
             let (seed, hash) = buf.split_at_mut(len);
 
-            rand::get_entropy(&mut *seed)?;
+            rand::fill(&mut *seed);
             hash_seed(seed, hash);
 
             buf

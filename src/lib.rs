@@ -10,9 +10,9 @@ pub mod message;
 pub mod mnemonic;
 mod rand;
 mod serialization;
+pub mod shamir;
 pub mod transaction;
 pub mod typeddata;
-pub mod shamir;
 
 #[cfg(test)]
 mod ganache;
