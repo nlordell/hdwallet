@@ -9,21 +9,30 @@ pub fn add(a: u8, b: u8) -> u8 {
 }
 
 /// Subtracts two elements of GF(256). Constant time.
-pub use add as sub;
+pub fn sub(a: u8, b: u8) -> u8 {
+    add(a, b)
+}
 
 /// Multiplies two elements of GF(256). Constant time.
 pub fn mul(mut a: u8, mut b: u8) -> u8 {
+    /// `0xff` if LSB is set, `0` otherwise.
     #[inline(always)]
-    fn neg(x: u8) -> u8 {
-        -(x as i8) as _
+    fn lsb(x: u8) -> u8 {
+        -((x & 1) as i8) as _
+    }
+
+    /// `0xff` if MSB is set, `0` otherwise.
+    #[inline(always)]
+    fn msb(x: u8) -> u8 {
+        ((x as i8) >> 7) as _
     }
 
     let mut p = 0;
 
     macro_rules! it {
         () => {
-            p = add(p, neg(b & 1) & a);
-            a = sub(a << 1, neg(a >> 7) & (P as u8));
+            p = add(p, lsb(b) & a);
+            a = sub(a << 1, msb(a) & (P as u8));
             b >>= 1;
         };
     }
@@ -35,7 +44,7 @@ pub fn mul(mut a: u8, mut b: u8) -> u8 {
     it!();
     it!();
 
-    add(p, neg(b & 1) & a)
+    add(p, lsb(b) & a)
 }
 
 /// Divides two elements of GF(256). Constant time.
@@ -45,7 +54,7 @@ pub fn div(a: u8, b: u8) -> u8 {
     #[inline(always)]
     fn inv(x: u8) -> u8 {
         // This is fun... but the inverse of b, is just b to the power of 254.
-        let mut i = x;
+        let mut i = x; // x^1
         i = mul(i, i); // x^2
         i = mul(i, x); // x^3
         i = mul(i, i); // x^6
