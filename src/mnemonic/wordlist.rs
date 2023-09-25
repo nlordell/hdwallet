@@ -39,7 +39,7 @@ impl<'a> Wordlist<'a> {
     /// # Panics
     ///
     /// This method panics if the index is out of range for the BIP-0039 word
-    /// list: it must be less than `WORD_COUNT` or `1024`.
+    /// list: it must be less than `WORD_COUNT` or `2048`.
     pub fn word(&'a self, index: usize) -> &'a str {
         assert!(index < WORD_COUNT, "invalid word index");
         self.0[index]

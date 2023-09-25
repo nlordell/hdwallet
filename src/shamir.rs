@@ -3,13 +3,14 @@
 //! This implementation follows the SLIP-0039 standard for generating and
 //! encoding shares with mnemonics.
 
-use crate::rand;
-use anyhow::{ensure, Result};
-use hmac::{Hmac, Mac as _};
-use sha2::Sha256;
+use self::wordlist::WORD_BITS;
+use crate::{rand, shamir::wordlist::WORD_MASK};
+use std::mem;
 
+mod cypher;
 mod ff;
 mod secret;
+mod wordlist;
 
 /// A single share for a secret.
 pub struct Share {
@@ -21,110 +22,6 @@ pub struct Share {
     mi: u8,
     mt: u8,
     share: Vec<u8>,
-}
-
-impl Share {
-    fn words(&self) -> impl Iterator<Item = i16> + '_ {
-        let radix = 10;
-        let bits = (self.share.len() * 8) as isize;
-        let n = (bits + radix - 1) / radix;
-        let padding = n - bits;
-
-        (0..n).map(|i| {
-            //let bit_offset = i * radix;
-            i as _
-        })
-    }
-}
-
-/// Lagrange interpolation of a polynomial at `x` described by the specified
-/// points.
-fn interpolate(ps: &[(u8, &[u8])], x: u8, y: &mut [u8]) {
-    assert_lengths(y.len(), ps.iter().map(|(_, yi)| *yi));
-
-    let ps = || ps.iter().copied().enumerate();
-    for (i, (xi, yi)) in ps() {
-        let mut pi = 1;
-        for (j, (xj, _)) in ps().filter(|(j, _)| *j != i) {
-            debug_assert!(xi != xj, "duplicate point");
-            pi = ff::mul(pi, ff::div(ff::sub(x, xj), ff::sub(xi, xj)));
-        }
-        for (yk, yik) in y.iter_mut().zip(yi) {
-            *yk = ff::add(*yk, ff::mul(*yik, pi));
-        }
-    }
-}
-
-/// Splits a secret into `n` shares, with a threshold recovery `t`. Returns a
-/// `Vec` with `n` elements representing each of the shares.
-fn split_secret(t: usize, n: usize, s: &[u8]) -> Vec<Vec<u8>> {
-    let m = s.len();
-    debug_assert!(
-        0 < t && t <= n && n <= 16 && m >= 16 && m % 2 == 0,
-        "invalid shamir parameters",
-    );
-
-    if t == 1 {
-        return (0..n).map(|_| s.to_vec()).collect();
-    }
-
-    let d = {
-        let mut buf = vec![0; m];
-
-        let r = &mut buf[4..];
-        rand::fill(r);
-
-        let code = hmac_sha256(r, s);
-        buf[..4].copy_from_slice(&code[..4]);
-
-        buf
-    };
-
-    let mut ys = vec![vec![0; m]; n];
-    let (ysr, ysi) = ys.split_at_mut(t - 2);
-
-    for y in ysr.iter_mut() {
-        rand::fill(y.as_mut());
-    }
-
-    let ps = ysr
-        .iter()
-        .enumerate()
-        .map(|(x, y)| (x as u8, &y[..]))
-        .chain([(254, &d[..]), (255, s)])
-        .collect::<Vec<_>>();
-    for (i, y) in ysi.iter_mut().enumerate() {
-        let x = i + t - 2;
-        interpolate(&ps, x as _, y);
-    }
-
-    ys
-}
-
-/// Recovers a secret from a list of shares for a threshold `t`.
-fn recover_secret(ps: &[(u8, &[u8])]) -> Result<Vec<u8>> {
-    let t = ps.len();
-    let m = ps.first().map(|(_, y)| y.len()).unwrap_or_default();
-    assert_lengths(m, ps.iter().map(|(_, y)| *y));
-    debug_assert!(
-        0 < t && t <= 16 && m >= 16 && m % 2 == 0,
-        "invalid shamir parameters"
-    );
-
-    if t == 1 {
-        return Ok(ps[0].1.to_vec());
-    }
-
-    let (mut s, mut d) = (vec![0; m], vec![0; m]);
-
-    interpolate(ps, 255, &mut s);
-    interpolate(ps, 254, &mut d);
-
-    let r = &d[4..];
-    let code = hmac_sha256(r, &s[..]);
-
-    ensure!(d[..4] == code[..4], "secret checksum mismatch");
-    Ok(s)
 }
 
 /// Generates shares for the given input.
@@ -140,14 +37,14 @@ fn generate_shares(gt: usize, g: &[(usize, usize)], s: &[u8], p: &[u8], e: u32) 
         i16::from_be_bytes(buf) & 0x7fff
     };
 
-    let es = secret::encrypt(s, p, e, id);
+    let es = cypher::encrypt(s, p, e, id);
 
-    split_secret(gt, g.len(), &es)
+    secret::split(gt, g.len(), &es)
         .iter()
         .enumerate()
         .zip(g)
         .flat_map(|((gi, s), &(mt, mn))| {
-            split_secret(mt, mn, s)
+            secret::split(mt, mn, s)
                 .into_iter()
                 .enumerate()
                 .map(move |(mi, share)| Share {
@@ -164,86 +61,71 @@ fn generate_shares(gt: usize, g: &[(usize, usize)], s: &[u8], p: &[u8], e: u32) 
         .collect()
 }
 
-fn hmac_sha256(r: &[u8], s: &[u8]) -> [u8; 32] {
-    Hmac::<Sha256>::new_from_slice(r)
-        .expect("HMAC should accept arbitrary key sizes")
-        .chain_update(&s)
-        .finalize()
-        .into_bytes()
-        .into()
-}
+fn words(bytes: &[u8]) -> impl Iterator<Item = usize> + '_ {
+    let bits = bytes.len() * 8;
+    let n = (bits + WORD_BITS - 1) / WORD_BITS;
 
-fn assert_lengths<'a>(m: usize, mut ys: impl Iterator<Item = &'a [u8]>) {
-    debug_assert!(
-        ys.all(|y| y.len() == m),
-        "secret and shares have different lengths",
-    );
+    (0..n).rev().map(move |i| {
+        let mut buf = [0; 4];
+        let shift = i * WORD_BITS;
+
+        let end = (bits - shift + 7) / 8;
+        let rem = shift % 8;
+
+        let start = end.saturating_sub(3);
+        let len = end - start;
+
+        buf[4 - len..].copy_from_slice(&bytes[start..end]);
+        (u32::from_be_bytes(buf) >> rem) as usize & WORD_MASK
+    })
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use super::*;
 
     #[test]
-    fn lagrange_interpolation() {
-        let mut y = [0, 0];
-        interpolate(&[(1, &[118, 56]), (2, &[146, 14])], 0, &mut y);
+    fn words_iterator() {
+        let buf = (1..=15).map(|i| (i << 4) + i).collect::<Vec<_>>();
+        let words = |i: usize| words(&buf[..i]).collect::<Vec<_>>();
 
-        assert_eq!(y, [42, 42]);
-    }
+        assert!(words(0).is_empty());
 
-    #[test]
-    fn split_and_recover() {
-        let secret = {
-            let mut buf = [0; 32];
-            for (i, b) in buf.iter_mut().enumerate() {
-                *b = (i + 1) as u8;
-            }
-            buf
-        };
-
-        let shares = split_secret(3, 5, &secret);
-
-        // Insufficient shares
-        assert!(recover_secret(&[(0, &shares[0]), (1, &shares[1])]).is_err());
-
-        // Exact amount of shares
-        for i in 0..5 {
-            for j in 0..5 {
-                for k in 0..5 {
-                    if i == j || i == k || j == k {
-                        continue;
-                    }
-
-                    let exact = recover_secret(&[
-                        (i as _, &shares[i]),
-                        (j as _, &shares[j]),
-                        (k as _, &shares[k]),
-                    ])
-                    .unwrap();
-                    assert_eq!(secret[..], exact);
-                }
-            }
-        }
-
-        // Extra shares
-        let extra = recover_secret(&[
-            (0, &shares[0]),
-            (1, &shares[1]),
-            (2, &shares[2]),
-            (3, &shares[3]),
-            (4, &shares[4]),
-        ])
-        .unwrap();
-        assert_eq!(secret[..], extra);
-    }
-
-    #[test]
-    fn very_large_secret() {
-        let secret = [42; 8192];
-        let shares = split_secret(2, 2, &secret);
-        let recovered = recover_secret(&[(0, &shares[0]), (1, &shares[1])]).unwrap();
-
-        assert_eq!(&secret[..], recovered);
+        assert_eq!(words(1), [0x011]);
+        assert_eq!(words(2), [0x004, 0x122]);
+        assert_eq!(words(3), [0x001, 0x048, 0x233]);
+        assert_eq!(words(4), [0x000, 0x112, 0x08c, 0x344]);
+        assert_eq!(words(5), [0x044, 0x223, 0x0d1, 0x055]);
+        assert_eq!(words(6), [0x011, 0x088, 0x334, 0x115, 0x166]);
+        assert_eq!(words(7), [0x004, 0x122, 0x0cd, 0x045, 0x159, 0x277]);
+        assert_eq!(words(8), [0x001, 0x048, 0x233, 0x111, 0x156, 0x19d, 0x388]);
+        assert_eq!(
+            words(9),
+            [0x000, 0x112, 0x08c, 0x344, 0x155, 0x267, 0x1e2, 0x099],
+        );
+        assert_eq!(
+            words(10),
+            [0x044, 0x223, 0x0d1, 0x055, 0x199, 0x378, 0x226, 0x1aa],
+        );
+        assert_eq!(
+            words(11),
+            [0x011, 0x088, 0x334, 0x115, 0x166, 0x1de, 0x089, 0x26a, 0x2bb],
+        );
+        assert_eq!(
+            words(12),
+            [0x004, 0x122, 0x0cd, 0x045, 0x159, 0x277, 0x222, 0x19a, 0x2ae, 0x3cc],
+        );
+        assert_eq!(
+            words(13),
+            [0x001, 0x048, 0x233, 0x111, 0x156, 0x19d, 0x388, 0x266, 0x2ab, 0x2f3, 0x0dd],
+        );
+        assert_eq!(
+            words(14),
+            [0x000, 0x112, 0x08c, 0x344, 0x155, 0x267, 0x1e2, 0x099, 0x2aa, 0x3bc, 0x337, 0x1ee],
+        );
+        assert_eq!(
+            words(15),
+            [0x044, 0x223, 0x0d1, 0x055, 0x199, 0x378, 0x226, 0x1aa, 0x2ef, 0x0cd, 0x37b, 0x2ff],
+        );
     }
 }
