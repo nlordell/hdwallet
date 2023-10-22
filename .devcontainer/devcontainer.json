@@ -3,7 +3,7 @@
   "build": {
     "dockerfile": "Dockerfile",
     "args": {
-      "VARIANT": "bullseye"
+      "VARIANT": "bookworm"
     }
   },
 
