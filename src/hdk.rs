@@ -12,12 +12,6 @@ use sha2::Sha512;
 /// A value indicating a path component is hardened.
 const HARDENED: u32 = 0x8000_0000;
 
-/// Creates a new extended private key for an account index using the standard
-/// Ethereum HD path.
-pub fn derive_index(seed: impl AsRef<[u8]>, account_index: usize) -> Result<PrivateKey> {
-    derive(seed, &format!("m/44'/60'/0'/0/{account_index}").parse()?)
-}
-
 /// Creates a new extended private key from a seed.
 pub fn derive(seed: impl AsRef<[u8]>, path: &Path) -> Result<PrivateKey> {
     derive_slice(seed.as_ref(), path)

@@ -29,8 +29,8 @@ struct AccountOptions {
     #[clap(long, env, hide_env_values = true, default_value_t)]
     password: String,
 
-    /// The BIP-44 account index for deriving a private from the mnemonic seed
-    /// phrase. The derived key will use the path "m/44'/60'/0'/0/{index}".
+    /// The BIP-44 account index for deriving a private key from the mnemonic
+    /// seed phrase. The derived key will use the path "m/44'/60'/0'/0/{index}".
     #[clap(long, env, default_value_t = 0)]
     account_index: usize,
 
@@ -44,10 +44,11 @@ impl AccountOptions {
     /// Returns the private key for the specified account options.
     pub fn private_key(&self) -> Result<PrivateKey> {
         let seed = self.mnemonic.seed(&self.password);
-        match &self.hd_path {
-            None => hdk::derive_index(seed, self.account_index),
-            Some(hd_path) => hdk::derive(seed, &hd_path.parse()?),
-        }
+        let path = match &self.hd_path {
+            None => hdk::Path::for_index(self.account_index),
+            Some(hd_path) => hd_path.parse()?,
+        };
+        hdk::derive(seed, &path)
     }
 }
 
