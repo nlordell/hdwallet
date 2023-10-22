@@ -13,7 +13,12 @@ pub struct Path {
 }
 
 impl Path {
-    /// Returns an iterator
+    /// Creates the default Ethereum HD path for the specified account index.
+    pub fn for_index(index: usize) -> Self {
+        format!("m/44'/60'/0'/0/{index}").parse().unwrap()
+    }
+
+    /// Returns an iterator over the path components.
     pub fn components(&self) -> impl Iterator<Item = Component> + '_ {
         self.components.iter().copied()
     }
