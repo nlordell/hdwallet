@@ -18,10 +18,10 @@ jobs:
     - name: Optimize
       run: |
         sudo apt-get update && sudo apt-get install binaryen
-        wasm-opt target/wasm32-wasi/release/hdwallet.wasm -O4 -o target/wasm32-wasi/release/hdwallet.opt.wasm --strip-debug --strip-producers
+        wasm-opt target/wasm32-wasi/release/hdwallet.wasm -O4 -o target/hdwallet.wasm --strip-debug --strip-producers
 
     - name: Release
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
-        gh release create ${GITHUB_REF#refs/*/} -t ${GITHUB_REF#refs/*/} --generate-notes 'target/wasm32-wasi/release/hdwallet.opt.wasm#hdwallet.wasm'
+        gh release create ${GITHUB_REF#refs/*/} -t ${GITHUB_REF#refs/*/} --generate-notes target/hdwallet.wasm
