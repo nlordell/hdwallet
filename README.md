@@ -3,12 +3,17 @@
 Command line tool for generating and using BIP-0032 hierarchical deterministic
 wallets for Ethereum.
 
+## Dependencies
+
+- Rust (`cargo` is used for building)
+- Binaryen (`wasm-opt` for optimizing the WebAssembly binary)
+
 ## Building and Running
 
-This crate can be built from source with Cargo:
+This project can be built with `make`:
 
 ```
-cargo build
+make
 ```
 
 Additional help is provided on the commandline:
@@ -17,10 +22,10 @@ Additional help is provided on the commandline:
 hdwallet --help
 ```
 
-## Releases
+## WebAssembly
 
-Additionally, `hdwallet` is also released as a WASI Wasm application. This
-ensures that if malicious code were ever to make its way into the released
+Additionally, `hdwallet` is also released as a WASI WebAssembly application.
+This ensures that if malicious code were ever to make its way into the released
 binary by sneaking in through dependencies or at distribution time, it would
 have very limited impact thanks to the strong security gurantees of sandboxing
 Wasm modules.
