@@ -1,11 +1,9 @@
 //! Module for hashing EIP-712 typed data.
 
-use crate::{
-    hash,
-    serialization::{self, JsonObject},
-};
+use crate::serialization::{self, JsonObject};
 use anyhow::{bail, ensure, Context as _, Result};
 use ethaddr::Address;
+use ethdigest::Digest;
 use ethnum::{serde::permissive, I256, U256};
 use serde::{
     de::{self, Deserializer},
@@ -20,26 +18,26 @@ use std::{
 
 /// EIP-712 typed data.
 pub struct TypedData {
-    digest: [u8; 32],
-    domain_separator: [u8; 32],
-    message_hash: [u8; 32],
+    digest: Digest,
+    domain_separator: Digest,
+    message_hash: Digest,
 }
 
 impl TypedData {
     /// Returns the 32-byte message to be used for siging the typed data.
     ///
     /// This is the EIP-712 digest of the typed data.
-    pub fn signing_message(&self) -> [u8; 32] {
+    pub fn signing_message(&self) -> Digest {
         self.digest
     }
 
     /// Returns the 32-byte hash of the typed data domain.
-    pub fn domain_separator(&self) -> [u8; 32] {
+    pub fn domain_separator(&self) -> Digest {
         self.domain_separator
     }
 
     /// Returns the 32-byte hash of the typed data message.
-    pub fn message_hash(&self) -> [u8; 32] {
+    pub fn message_hash(&self) -> Digest {
         self.message_hash
     }
 }
@@ -79,9 +77,9 @@ impl TypedDataBlob {
 
         let mut buffer = [0; 66];
         buffer[0..2].copy_from_slice(b"\x19\x01");
-        buffer[2..34].copy_from_slice(&domain_separator);
-        buffer[34..66].copy_from_slice(&message_hash);
-        let digest = hash::keccak256(buffer);
+        buffer[2..34].copy_from_slice(domain_separator.as_slice());
+        buffer[34..66].copy_from_slice(message_hash.as_slice());
+        let digest = Digest::of(buffer);
 
         Ok(TypedData {
             digest,
@@ -127,10 +125,10 @@ impl TypedDataBlob {
 struct Types(HashMap<String, Vec<Member>>);
 
 impl Types {
-    fn struct_hash(&self, kind: &str, mut data: JsonObject) -> Result<[u8; 32]> {
+    fn struct_hash(&self, kind: &str, mut data: JsonObject) -> Result<Digest> {
         let type_definition = self.type_definition(kind)?;
         let mut buffer = vec![0_u8; 32 * (1 + type_definition.members.len())];
-        buffer[0..32].copy_from_slice(&self.type_hash(kind)?);
+        buffer[0..32].copy_from_slice(self.type_hash(kind)?.as_slice());
         for (i, member) in type_definition.members.iter().enumerate() {
             buffer[(i + 1) * 32..][..32].copy_from_slice(
                 &self.encode_value(
@@ -147,7 +145,7 @@ impl Types {
             "additional unspecified {kind} properties: {}",
             data.keys().cloned().collect::<Vec<_>>().join(", "),
         );
-        Ok(hash::keccak256(&buffer))
+        Ok(Digest::of(buffer))
     }
 
     fn encode_type(&self, kind: &str) -> Result<String> {
@@ -172,9 +170,9 @@ impl Types {
         Ok(buffer)
     }
 
-    fn type_hash(&self, kind: &str) -> Result<[u8; 32]> {
+    fn type_hash(&self, kind: &str) -> Result<Digest> {
         let encoded_type = self.encode_type(kind)?;
-        Ok(hash::keccak256(encoded_type))
+        Ok(Digest::of(encoded_type))
     }
 
     fn type_definition<'a>(&'a self, kind: &'a str) -> Result<TypeDefinition<'a>> {
@@ -204,7 +202,7 @@ impl Types {
                             .copy_from_slice(&bytes);
                         buffer
                     }
-                    None => hash::keccak256(&bytes),
+                    None => Digest::of(&bytes).0,
                 }
             }
             MemberKind::Uint(n) => {
@@ -234,13 +232,13 @@ impl Types {
                 buffer[12..].copy_from_slice(&*address);
                 buffer
             }
-            MemberKind::String => hash::keccak256(&*Cow::<str>::deserialize(value)?),
+            MemberKind::String => Digest::of(&*Cow::<str>::deserialize(value)?).0,
             MemberKind::Struct(inner) => {
                 let value = match value {
                     Value::Object(value) => value,
                     value => bail!("expected JSON object but got '{value}'"),
                 };
-                self.struct_hash(inner, value)?
+                *self.struct_hash(inner, value)?
             }
             MemberKind::Array(inner, size) => {
                 let value = match value {
@@ -259,7 +257,7 @@ impl Types {
                 for (i, element) in value.into_iter().enumerate() {
                     buffer[(i * 32)..][..32].copy_from_slice(&self.encode_value(inner, element)?);
                 }
-                hash::keccak256(&buffer)
+                Digest::of(&buffer).0
             }
         })
     }
@@ -281,7 +279,7 @@ impl<'a> TypeDefinition<'a> {
 impl Display for TypeDefinition<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{}(", self.kind)?;
-        if let Some(first_member) = self.members.get(0) {
+        if let Some(first_member) = self.members.first() {
             write!(f, "{first_member}")?;
         }
         for member in self.members.get(1..).into_iter().flatten() {
@@ -390,7 +388,7 @@ impl<'de> Deserialize<'de> for MemberKind {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use hex_literal::hex;
+    use ethdigest::digest;
     use maplit::hashmap;
     use serde_json::json;
 
@@ -438,7 +436,7 @@ mod tests {
         .unwrap();
         assert_eq!(
             typed_data.signing_message(),
-            hex!("be609aee343fb3c4b28e1df9e632fca64fcfaede20f02e86244efddf30957bd2"),
+            digest!("be609aee343fb3c4b28e1df9e632fca64fcfaede20f02e86244efddf30957bd2"),
         );
     }
 
@@ -499,7 +497,7 @@ mod tests {
         .unwrap();
         assert_eq!(
             typed_data.signing_message(),
-            hex!("a150d6fdc3fe189531a29808ccdd2808005c24274de09187af619f69377221a1"),
+            digest!("a150d6fdc3fe189531a29808ccdd2808005c24274de09187af619f69377221a1"),
         );
     }
 

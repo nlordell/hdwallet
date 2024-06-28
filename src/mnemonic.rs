@@ -4,12 +4,11 @@ mod language;
 mod wordlist;
 
 pub use self::{language::Language, wordlist::WORD_COUNT};
-use crate::{hash, rand};
+use crate::rand;
 use anyhow::{ensure, Context as _, Result};
 use hmac::Hmac;
-use sha2::Sha512;
+use sha2::{Digest as _, Sha256, Sha512};
 use std::{
-    convert::TryInto,
     fmt::{self, Display, Formatter},
     mem,
     ops::Deref,
@@ -49,7 +48,7 @@ impl Mnemonic {
             let (seed, hash) = buf.split_at_mut(len);
 
             rand::get_entropy(&mut *seed)?;
-            hash[..32].copy_from_slice(&hash::sha256(seed));
+            hash_seed(seed, hash);
 
             buf
         };
@@ -94,7 +93,7 @@ impl Mnemonic {
             debug_assert_eq!(len * 8 + bit_offset, words.len() * WORD_BITS);
             debug_assert_eq!(byte_offset, len);
 
-            hash[..32].copy_from_slice(&hash::sha256(seed));
+            hash_seed(seed, hash);
 
             let checksum_mask = (1 << bit_offset) - 1;
             ensure!(
@@ -207,6 +206,12 @@ fn mnemonic_to_byte_length(len: usize) -> Result<usize> {
     // ```
     // <https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki#generating-the-mnemonic>
     Ok((len * WORD_BITS * 32 / 33) / 8)
+}
+
+fn hash_seed(seed: &[u8], hash: &mut [u8]) {
+    let mut hasher = Sha256::new();
+    hasher.update(seed);
+    hasher.finalize_into((&mut hash[..32]).into());
 }
 
 #[cfg(test)]

@@ -3,7 +3,6 @@
 #[path = "../../src/ganache.rs"]
 mod ganache;
 
-pub use ganache::*;
 use std::{
     io::Write as _,
     process::{Command, Stdio},

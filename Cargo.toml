@@ -1,18 +1,19 @@
 [package]
 name = "hdwallet"
 version = "0.2.4"
-authors = ["Nicholas Rodrigues Lordello <nlordell@gmail.com>"]
+authors = ["Nicholas Rodrigues Lordello <n@lordello.net>"]
 edition = "2021"
 description = "Hierarchical deterministic wallet for Ethereum"
 documentation = "https://docs.rs/hdwallet"
-homepage = "https://github.com/nlordell/hdwallet"
-repository = "https://github.com/nlordell/hdwallet"
-license = "GPL-3.0-or-later"
+homepage = "https://codeberg.org/nlordell/hdwallet"
+repository = "https://codeberg.org/nlordell/hdwallet"
+license = "GPL-3.0-only"
 
 [dependencies]
 anyhow = "1"
 clap = { version = "4", features = ["derive", "env"] }
-ethaddr = { version = "0.1", features = ["macros", "serde"] }
+ethaddr = { version = "0.2", features = ["serde"] }
+ethdigest = { version = "0.4", features = ["serde"] }
 ethnum = { version = "1", features = ["serde"] }
 hex = "0.4"
 hmac = { version = "0.12", features = ["std"] }
@@ -21,7 +22,6 @@ pbkdf2 = { version = "0.12", default-features = false }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
-sha3 = "0.10"
 unicode-normalization = "0.1"
 
 [dev-dependencies]

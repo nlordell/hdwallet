@@ -1,6 +1,6 @@
 //! Ethereum message for signing.
 
-use crate::hash;
+use ethdigest::Digest;
 use std::io::Write as _;
 
 /// A message to be signed with an Ethereum specific prefix.
@@ -11,13 +11,13 @@ where
     T: AsRef<[u8]>,
 {
     /// Computes the 32-byte message used for ECDSA signing with a private key.
-    pub fn signing_message(&self) -> [u8; 32] {
+    pub fn signing_message(&self) -> Digest {
         digest(self.0.as_ref())
     }
 }
 
 /// Computes the Ethereum-specific digest for a message.
-fn digest(data: &[u8]) -> [u8; 32] {
+fn digest(data: &[u8]) -> Digest {
     let mut buffer = Vec::with_capacity(46 + data.len());
     buffer.extend_from_slice(b"\x19Ethereum Signed Message:\n");
     // Display implementation for `usize` should not error when writing to an
@@ -27,7 +27,7 @@ fn digest(data: &[u8]) -> [u8; 32] {
     write!(buffer, "{}", data.len()).expect("unexpected error writing number");
     buffer.extend_from_slice(data);
 
-    hash::keccak256(buffer)
+    Digest::of(buffer)
 }
 
 #[cfg(test)]
@@ -38,7 +38,7 @@ mod tests {
     fn computes_digest() {
         assert_eq!(
             digest(b"hello world!"),
-            hash::keccak256(b"\x19Ethereum Signed Message:\n12hello world!"),
+            Digest::of(b"\x19Ethereum Signed Message:\n12hello world!"),
         );
     }
 }

@@ -43,9 +43,9 @@ impl Signature {
     /// # Panics
     ///
     /// Panics on invalid signature parts.
-    pub fn from_parts(r: [u8; 32], s: [u8; 32], y_parity: u8) -> Self {
+    pub fn from_parts(r: U256, s: U256, y_parity: u8) -> Self {
         Self(
-            ecdsa::Signature::from_scalars(r, s).unwrap(),
+            ecdsa::Signature::from_scalars(r.to_be_bytes(), s.to_be_bytes()).unwrap(),
             y_parity.try_into().unwrap(),
         )
     }
@@ -77,10 +77,13 @@ impl FromStr for Signature {
             _ => bail!("invalid V-value, must be 27 or 28 but got {v}"),
         };
 
-        Ok(Self::from_parts(
-            signature[0..32].try_into().unwrap(),
-            signature[32..64].try_into().unwrap(),
-            y_parity,
+        Ok(Self(
+            ecdsa::Signature::from_scalars(
+                <[u8; 32]>::try_from(&signature[0..32])?,
+                <[u8; 32]>::try_from(&signature[32..64])?,
+            )
+            .unwrap(),
+            y_parity.try_into()?,
         ))
     }
 }
@@ -88,16 +91,21 @@ impl FromStr for Signature {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ethnum::uint;
 
     #[test]
     fn replay_protection() {
-        let signature = Signature::from_parts([1; 32], [2; 32], 0);
+        let signature = Signature::from_parts(U256::new(1), U256::new(2), 0);
         assert_eq!(signature.v(Some(U256::new(1))), U256::new(37));
     }
 
     #[test]
     fn signature_to_string() {
-        let signature = Signature::from_parts([1; 32], [2; 32], 0);
+        let signature = Signature::from_parts(
+            uint!("0x0101010101010101010101010101010101010101010101010101010101010101"),
+            uint!("0x0202020202020202020202020202020202020202020202020202020202020202"),
+            0,
+        );
         assert_eq!(
             signature.to_string(),
             "0x0101010101010101010101010101010101010101010101010101010101010101\

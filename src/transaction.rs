@@ -10,7 +10,8 @@ mod rlp;
 pub use self::{
     eip1559::Eip1559Transaction, eip2930::Eip2930Transaction, legacy::LegacyTransaction,
 };
-use crate::{account::Signature, hash, serialization::JsonObject};
+use crate::{account::Signature, serialization::JsonObject};
+use ethdigest::Digest;
 use serde::{
     de::{self, Deserializer},
     Deserialize,
@@ -26,8 +27,8 @@ pub enum Transaction {
 
 impl Transaction {
     /// Returns the RLP encoded transaction with an optional signature.
-    pub fn signing_message(&self) -> [u8; 32] {
-        hash::keccak256(self.rlp_encode(None))
+    pub fn signing_message(&self) -> Digest {
+        Digest::of(self.rlp_encode(None))
     }
 
     /// Returns the 32-byte message used for signing.

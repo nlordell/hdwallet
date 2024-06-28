@@ -1,14 +1,15 @@
 //! Module implementing the `sign` subcommand for generating ECDSA signatures.
 
 use crate::cmd::{self, AccountOptions};
-use anyhow::{ensure, Context as _, Result};
+use anyhow::{ensure, Result};
 use clap::Parser;
+use ethdigest::Digest;
 use hdwallet::{
     message::EthereumMessage,
     transaction::{LegacyTransaction, Transaction},
     typeddata::TypedData,
 };
-use std::{convert::TryInto, path::PathBuf};
+use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
 pub struct Options {
@@ -58,8 +59,8 @@ enum Input {
     /// Sign a raw data.
     Raw {
         /// The 32 byte message to sign specified as a hexadecimal string.
-        #[clap(name = "BYTES", value_parser = permissive_hex_digest)]
-        message: [u8; 32],
+        #[clap(name = "BYTES")]
+        message: Digest,
     },
 }
 
@@ -100,10 +101,4 @@ pub fn run(options: Options) -> Result<()> {
         }
     }
     Ok(())
-}
-
-fn permissive_hex_digest(s: &str) -> Result<[u8; 32]> {
-    cmd::permissive_hex(s)?[..]
-        .try_into()
-        .context("message for signing must be exactly 32 bytes long")
 }

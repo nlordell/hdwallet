@@ -3,9 +3,9 @@
 use crate::cmd;
 use anyhow::Result;
 use clap::Parser;
+use ethdigest::Digest;
 use hdwallet::{
-    account::Signature, hash, message::EthereumMessage, transaction::Transaction,
-    typeddata::TypedData,
+    account::Signature, message::EthereumMessage, transaction::Transaction, typeddata::TypedData,
 };
 use std::path::PathBuf;
 
@@ -59,7 +59,7 @@ enum Input {
 }
 
 pub fn run(options: Options) -> Result<()> {
-    let hash = match options.input {
+    let digest = match options.input {
         Input::Transaction {
             transaction,
             signature,
@@ -67,7 +67,7 @@ pub fn run(options: Options) -> Result<()> {
             let transaction =
                 serde_json::from_slice::<Transaction>(&cmd::read_input(&transaction)?)?;
             match signature {
-                Some(signature) => hash::keccak256(transaction.encode(signature)),
+                Some(signature) => Digest::of(transaction.encode(signature)),
                 None => transaction.signing_message(),
             }
         }
@@ -88,10 +88,10 @@ pub fn run(options: Options) -> Result<()> {
         }
         Input::Data { data } => {
             let data = cmd::read_input(&data)?;
-            hash::keccak256(data)
+            Digest::of(data)
         }
     };
-    println!("0x{}", hex::encode(hash));
+    println!("{digest}");
 
     Ok(())
 }
