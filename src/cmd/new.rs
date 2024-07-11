@@ -9,6 +9,8 @@ use hdwallet::mnemonic::{Language, Mnemonic};
 use std::{
     fmt::{self, Display, Formatter},
     str::FromStr,
+    sync::mpsc,
+    thread,
 };
 
 #[derive(Debug, Parser)]
@@ -40,6 +42,11 @@ pub struct Options {
     /// with the "--vanity-3account-index" option.
     #[clap(long, conflicts_with = "vanity_account_index")]
     vanity_hd_path: Option<String>,
+
+    /// The number of parallel threads to use when searching for a vanity
+    /// address. Defaults to the number of CPUs.
+    #[clap(short = 'j', long, default_value_t = num_cpus::get())]
+    vanity_threads: usize,
 }
 
 #[derive(Clone, Debug)]
@@ -106,19 +113,47 @@ impl FromStr for Prefix {
 }
 
 pub fn run(options: Options) -> Result<()> {
-    let random_mnemonic = || Mnemonic::random(options.language, options.length);
-    let mnemonic = if let Some(prefix) = options.vanity_prefix {
-        let mut account = AccountOptions {
-            mnemonic: random_mnemonic()?,
-            password: options.vanity_password,
-            account_index: options.vanity_account_index,
-            hd_path: options.vanity_hd_path,
-        };
-        while !prefix.matches(account.private_key()?.address()) {
-            account.mnemonic = random_mnemonic()?;
-        }
+    let random_mnemonic = {
+        let language = options.language;
+        let length = options.length;
+        move || Mnemonic::random(language, length)
+    };
 
-        account.mnemonic
+    let mnemonic = if let Some(prefix) = options.vanity_prefix {
+        let vanity = {
+            let prefix = prefix.clone();
+            let mut account = AccountOptions {
+                mnemonic: random_mnemonic()?,
+                password: options.vanity_password,
+                account_index: options.vanity_account_index,
+                hd_path: options.vanity_hd_path,
+            };
+            move || -> Result<Mnemonic> {
+                while !prefix.matches(account.private_key()?.address()) {
+                    account.mnemonic = random_mnemonic()?;
+                }
+                Ok(account.mnemonic)
+            }
+        };
+
+        if options.vanity_threads > 0 {
+            let (sender, receiver) = mpsc::channel();
+            let _threads = (0..options.vanity_threads)
+                .map(|_| {
+                    thread::spawn({
+                        let vanity = vanity.clone();
+                        let result = sender.clone();
+                        move || {
+                            let _ = result.send(vanity());
+                        }
+                    })
+                })
+                .collect::<Vec<_>>();
+
+            receiver.recv().unwrap()?
+        } else {
+            vanity()?
+        }
     } else {
         random_mnemonic()?
     };

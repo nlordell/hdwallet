@@ -18,7 +18,7 @@ use std::{
 };
 
 /// Shared account options.
-#[derive(Debug, Parser)]
+#[derive(Clone, Debug, Parser)]
 struct AccountOptions {
     /// The BIP-0039 mnemonic phrase for seeding the HD wallet.
     #[clap(short, long, env, hide_env_values = true)]
