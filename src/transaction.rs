@@ -2,13 +2,17 @@
 //! implementation.
 
 pub mod accesslist;
+pub mod authorization;
 mod eip1559;
 mod eip2930;
+mod eip4844;
+mod eip7702;
 mod legacy;
 mod rlp;
 
 pub use self::{
-    eip1559::Eip1559Transaction, eip2930::Eip2930Transaction, legacy::LegacyTransaction,
+    eip1559::Eip1559Transaction, eip2930::Eip2930Transaction, eip4844::Eip4844Transaction,
+    eip7702::Eip7702Transaction, legacy::LegacyTransaction,
 };
 use crate::{account::Signature, serialization::JsonObject};
 use ethdigest::Digest;
@@ -23,6 +27,8 @@ pub enum Transaction {
     Legacy(LegacyTransaction),
     Eip2930(Eip2930Transaction),
     Eip1559(Eip1559Transaction),
+    Eip4844(Eip4844Transaction),
+    Eip7702(Eip7702Transaction),
 }
 
 impl Transaction {
@@ -42,6 +48,8 @@ impl Transaction {
             Transaction::Legacy(tx) => tx.rlp_encode(signature),
             Transaction::Eip2930(tx) => tx.rlp_encode(signature),
             Transaction::Eip1559(tx) => tx.rlp_encode(signature),
+            Transaction::Eip4844(tx) => tx.rlp_encode(signature),
+            Transaction::Eip7702(tx) => tx.rlp_encode(signature),
         }
     }
 }
@@ -52,7 +60,12 @@ impl<'de> Deserialize<'de> for Transaction {
         D: Deserializer<'de>,
     {
         let json = JsonObject::deserialize(deserializer)?;
-        if json.contains_key("maxPriorityFeePerGas") || json.contains_key("maxFeePerGas") {
+        if json.contains_key("authorizationList") {
+            todo!("EIP-7702 is currently not implemented");
+        } else if json.contains_key("maxFeePerBlobGas") || json.contains_key("blobVersionedHashes")
+        {
+            todo!("EIP-4844 is currently not implemented");
+        } else if json.contains_key("maxPriorityFeePerGas") || json.contains_key("maxFeePerGas") {
             Ok(Transaction::Eip1559(
                 serde_json::from_value(json.into()).map_err(de::Error::custom)?,
             ))
@@ -153,5 +166,6 @@ mod tests {
                  392d3abcda"
             ),
         );
+        todo!();
     }
 }

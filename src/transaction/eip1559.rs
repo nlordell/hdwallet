@@ -1,4 +1,5 @@
-//! EIp-1559 Ethereum transaction with base gas pricing type definition and RLP encoding.
+//! EIP-1559 Ethereum transaction with base gas pricing type definition and RLP
+//! encoding.
 
 use crate::{
     account::Signature, serialization, transaction::accesslist::AccessList, transaction::rlp,
@@ -35,8 +36,7 @@ pub struct Eip1559Transaction {
     #[serde(with = "serialization::bytes")]
     pub data: Vec<u8>,
     /// List of addresses and storage keys that the transaction plans to access.
-    #[serde(default)]
-    #[serde(rename = "accessList")]
+    #[serde(default, rename = "accessList")]
     pub access_list: AccessList,
 }
 
