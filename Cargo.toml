@@ -5,8 +5,8 @@ authors = ["Nicholas Rodrigues Lordello <n@lordello.net>"]
 edition = "2021"
 description = "Hierarchical deterministic wallet for Ethereum"
 documentation = "https://docs.rs/hdwallet"
-homepage = "https://codeberg.org/nlordell/hdwallet"
-repository = "https://codeberg.org/nlordell/hdwallet"
+homepage = "https://github.com/nlordell/hdwallet"
+repository = "https://github.com/nlordell/hdwallet"
 license = "GPL-3.0-only"
 
 [dependencies]
